@@ -1,0 +1,30 @@
+flowchart LR
+    JUG(["Jugador"])
+
+    subgraph SISTEMA["PartyPad"]
+        direction TB
+        CU2(["CU2 Unirse a una sala con QR o código"])
+        CU3(["CU3 Elegir nombre y color"])
+        CU5(["CU5 Jugar un minijuego"])
+        CU8(["CU8 Reconectarse a la partida"])
+        CU6(["CU6 Ver clasificación y podio"])
+        CU1(["CU1 Crear sala"])
+        CU4(["CU4 Iniciar partida"])
+        CU9(["CU9 Expulsar jugador"])
+        CU7(["CU7 Descargar o actualizar packs"])
+    end
+
+    ANF(["Anfitrión"])
+    SRV(["Servidor de packs"])
+
+    JUG --- CU2
+    JUG --- CU5
+    JUG --- CU8
+    JUG --- CU6
+    CU2 -. "incluye" .-> CU3
+    CU6 --- ANF
+    CU1 --- ANF
+    CU4 --- ANF
+    CU9 --- ANF
+    CU7 --- ANF
+    CU7 --- SRV

@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph PANTALLA["Pantalla principal · navegador del PC"]
+        direction LR
+        P1["Lobby y código QR"]
+        P2["Motor de juego Phaser 3"]
+        P3["Gestor de packs"]
+        P4["Audio y efectos"]
+        P1 ~~~ P2 ~~~ P3 ~~~ P4
+    end
+
+    subgraph SERVIDOR["Servidor · Node.js en la nube con HTTPS"]
+        direction LR
+        S1["Gestor de salas"]
+        S2["Lógica de partida y puntuaciones"]
+        S3["Codificador del protocolo binario"]
+        S4["Repositorio de packs y manifest.json"]
+        S1 ~~~ S2 ~~~ S3 ~~~ S4
+    end
+
+    subgraph MANDOS["Mandos · navegador del móvil, PWA"]
+        direction LR
+        M1["Interfaz táctil"]
+        M2["Sensores: acelerómetro y giroscopio"]
+        M3["Vibración"]
+        M4["Service Worker y caché"]
+        M1 ~~~ M2 ~~~ M3 ~~~ M4
+    end
+
+    PANTALLA <-- "WebSocket: eventos de sala y estado del juego" --> SERVIDOR
+    PANTALLA -- "HTTPS: descarga de packs ZIP" --> SERVIDOR
+    SERVIDOR <-- "WebSocket binario: entradas y vibración" --> MANDOS
+    SERVIDOR -- "HTTPS: página del mando, al escanear el QR" --> MANDOS

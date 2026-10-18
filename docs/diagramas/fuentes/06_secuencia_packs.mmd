@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    participant P as Pantalla principal
+    participant C as Caché local IndexedDB
+    participant S as Servidor de packs
+
+    P->>S: GET /packs/manifest.json
+    S-->>P: Lista de packs con id, versión, tamaño y hash
+    P->>C: Consulta versiones instaladas
+    C-->>P: tilt-maze 1.0, shake-race 1.2
+    loop Para cada pack nuevo o con versión mayor
+        P->>S: GET /packs/aim-shoot-1.0.zip
+        S-->>P: ZIP con código, sprites WebP y sonidos Opus
+        P->>P: Comprueba el hash SHA-256
+        alt Hash correcto
+            P->>C: Guarda el pack y su versión
+            P->>P: Registra el minijuego en el catálogo
+        else Hash incorrecto
+            P->>P: Descarta y mantiene la versión anterior
+        end
+    end
+    P->>P: Muestra el aviso Nuevo minijuego disponible

@@ -1,0 +1,26 @@
+stateDiagram-v2
+    [*] --> Lobby: crear sala
+    Lobby --> Lobby: jugador se une o sale
+    Lobby --> CargandoMinijuego: anfitrión inicia, 2 jugadores o más
+
+    CargandoMinijuego --> Instrucciones: recursos listos
+    Instrucciones --> CuentaAtras: 5 s
+    CuentaAtras --> Jugando: 3, 2, 1
+    Jugando --> Pausada: el anfitrión pausa
+    Pausada --> Jugando: reanudar
+    Jugando --> ResultadosRonda: tiempo agotado o todos terminan
+
+    ResultadosRonda --> CargandoMinijuego: quedan rondas
+    ResultadosRonda --> Podio: última ronda
+
+    Podio --> Lobby: jugar otra vez
+    Podio --> [*]: cerrar sala
+
+    Lobby --> [*]: sala vacía 10 min
+
+    note right of Jugando
+        Si un jugador se desconecta,
+        tiene 30 s para reconectarse
+        con su token antes de
+        quedar fuera de la ronda
+    end note

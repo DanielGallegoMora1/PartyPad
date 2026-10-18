@@ -1,0 +1,77 @@
+classDiagram
+    direction LR
+    class GameServer {
+        -rooms: Map~string, Room~
+        -packs: PackManager
+        +createRoom(hostSocket) Room
+        +joinRoom(code, name, color) Player
+        +handleMessage(socket, buffer)
+    }
+    class Room {
+        +code: string
+        +host: Socket
+        +players: Player[]
+        +state: RoomState
+        +rounds: MiniGame[]
+        +addPlayer(p) void
+        +removePlayer(id) void
+        +start() void
+        +nextRound() void
+        +broadcast(msg) void
+    }
+    class Player {
+        +id: number
+        +name: string
+        +color: string
+        +score: number
+        +reconnectToken: string
+        +connected: boolean
+    }
+    class MiniGame {
+        <<abstract>>
+        +id: string
+        +duration: number
+        +inputMode: InputMode
+        +start(players) void
+        +onInput(player, data) void
+        +tick(dt) void
+        +getResults() Result[]
+    }
+    class ShakeRace
+    class TiltMaze
+    class Reflex
+    class AimShoot {
+        <<pack descargable>>
+    }
+    class PackManager {
+        -manifest: Manifest
+        +listPacks() PackInfo[]
+        +getPack(id) Buffer
+        +reload() void
+    }
+    class Protocol {
+        <<utility>>
+        +encode(type, payload) ArrayBuffer
+        +decode(buffer) Message
+        +quantize(value) int8
+    }
+    class RoomState {
+        <<enumeration>>
+        LOBBY
+        LOADING
+        PLAYING
+        PAUSED
+        RESULTS
+        PODIUM
+    }
+
+    GameServer "1" o-- "*" Room
+    GameServer --> PackManager
+    GameServer ..> Protocol
+    Room "1" *-- "1..8" Player
+    Room "1" o-- "*" MiniGame
+    Room --> RoomState
+    MiniGame <|-- ShakeRace
+    MiniGame <|-- TiltMaze
+    MiniGame <|-- Reflex
+    MiniGame <|-- AimShoot

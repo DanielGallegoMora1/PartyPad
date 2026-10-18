@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor A as Anfitrión
+    participant P as Pantalla principal
+    participant S as Servidor
+    participant M as Móvil del jugador
+    actor J as Jugador
+
+    A->>P: Abre PartyPad
+    P->>S: create_room
+    S-->>P: room_created, código ABCD
+    P->>P: Genera QR con la URL de la sala
+    J->>M: Escanea el QR
+    M->>S: GET /mando?sala=ABCD por HTTPS
+    S-->>M: Página del mando como PWA
+    M->>M: Pide permiso de sensores en iOS
+    J->>M: Escribe su nombre y elige color
+    M->>S: join_room ABCD, nombre, color
+    alt Sala llena o código incorrecto
+        S-->>M: join_error con el motivo
+    else Unión correcta
+        S-->>M: joined, id de jugador y token de reconexión
+        S-->>P: player_joined
+        P->>P: Muestra al jugador en el lobby
+    end
+    A->>P: Pulsa Empezar
+    P->>S: start_game
+    S-->>P: game_start con la lista de minijuegos
+    S-->>M: game_start
+    M->>M: Cambia a la vista de mando

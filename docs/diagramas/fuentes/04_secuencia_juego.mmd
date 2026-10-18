@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    participant M as Móvil
+    participant S as Servidor
+    participant P as Pantalla principal
+
+    S->>P: round_start Laberinto, duración 45 s
+    S->>M: round_start, modo inclinación
+    loop Cada 33 ms, unos 30 Hz
+        M->>M: Lee el giroscopio
+        M->>M: Cuantiza x e y a int8
+        alt Cambio mayor que el umbral, compresión delta
+            M->>S: TILT, 4 bytes en binario
+            S->>S: Valida y actualiza el estado
+            S->>P: state_update con todos los jugadores
+            P->>P: Interpola y dibuja las bolas
+        else Cambio pequeño
+            M->>M: No envía nada
+        end
+    end
+    P->>S: player_finished, jugador 3
+    S->>M: vibrate 200 ms al jugador 3
+    S->>S: Calcula puntos de la ronda
+    S->>P: round_end con la clasificación
+    S->>M: round_end con la posición del jugador

@@ -7,7 +7,7 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 
 | | |
 |---|---|
-| **Equipo** | Daniel y Vicente · grupo de prácticas `NN` |
+| **Equipo** | Daniel y Vicente · grupo de prácticas `16` |
 | **Entrega** | 4 de diciembre de 2026, en Campus Virtual |
 | **Presentación** | Entre el 9 y el 16 de diciembre, 15 minutos con demo en directo |
 

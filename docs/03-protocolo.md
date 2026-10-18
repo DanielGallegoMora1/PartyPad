@@ -11,7 +11,7 @@ La compresión es el aspecto obligatorio que más fácil se queda flojo en un vi
 | Entradas de los mandos | Inclinación, agitado, botones | Hasta 30 por segundo y jugador | **Binario propio** |
 | Eventos de sala | `create_room`, `joined`, `round_start`, `round_end` | Pocos por minuto | **JSON**, porque se lee y depura mejor y el tamaño no importa |
 
-Esta separación es una decisión de diseño que conviene justificar en la memoria: comprimimos donde el volumen lo justifica y dejamos legible el resto.
+Esta separación es una decisión de diseño que se justifica en la memoria: comprimimos donde el volumen lo justifica y dejamos legible el resto.
 
 ## Mensajes binarios
 

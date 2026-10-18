@@ -72,9 +72,18 @@ partypad/
 
 ## Ejecución
 
-> Pendiente: se completará cuando exista el primer prototipo.
+Requiere Node.js 20 o superior.
 
 ```bash
 npm install
-npm start
+npm start      # o npm run dev para reiniciar al guardar cambios
 ```
+
+| Ruta | Qué sirve |
+|---|---|
+| `http://localhost:3000/` | Pantalla principal (`host/`) |
+| `http://localhost:3000/mando` | Mando del móvil (`controller/`) |
+| `/shared/…` | Código común (`shared/`) |
+| `/packs/manifest.json` | Manifest de packs (`packs/`) |
+
+El puerto se cambia con la variable de entorno `PORT`.

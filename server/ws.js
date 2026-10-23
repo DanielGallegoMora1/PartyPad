@@ -1,74 +1,124 @@
-// WebSocket del prototipo: una única partida, sin salas todavía.
-// Los mandos envían entradas binarias que se reenvían a las pantallas, y las pantallas
-// pueden enviar VIBRATE a un mando concreto. Los eventos de sala van en JSON (ver docs/03-protocolo.md).
+// WebSocket de PartyPad. Cada conexión dice qué es con ?rol=pantalla o ?rol=mando.
+// Los eventos de sala llegan en JSON y las entradas de los mandos en binario (ver docs/03-protocolo.md).
 import { WebSocketServer } from 'ws';
 import { MSG } from '../shared/protocol.js';
+import { buscarSala, crearSala, enviar } from './salas.js';
 
-const MAX_JUGADORES = 8;
+const noExiste = (code) => ({ type: 'room_info', code, exists: false });
+
+function mensajePantalla(socket, msg) {
+  const sala = socket.sala;
+  switch (msg.type) {
+    case 'create_room': {
+      if (sala) return;
+      const nueva = crearSala();
+      nueva.conectarPantalla(socket);
+      enviar(socket, { type: 'room_created', code: nueva.code, token: nueva.hostToken });
+      return;
+    }
+    case 'resume_room': {
+      const encontrada = buscarSala(msg.code);
+      if (sala || !encontrada || encontrada.hostToken !== msg.token) {
+        enviar(socket, { type: 'resume_error' });
+        return;
+      }
+      encontrada.conectarPantalla(socket);
+      enviar(socket, { type: 'room_resumed', code: encontrada.code, state: encontrada.state, players: encontrada.lista });
+      return;
+    }
+    case 'start_game':
+      return sala?.empezar();
+    case 'back_to_lobby':
+      return sala?.volverAlLobby();
+    case 'kick':
+      return sala?.quitar(msg.id, 'kicked');
+    case 'close_room':
+      return sala?.cerrar();
+  }
+}
+
+function mensajeMando(socket, msg) {
+  switch (msg.type) {
+    case 'room_info': {
+      if (socket.jugador) return;
+      const sala = buscarSala(msg.code);
+      if (sala) sala.observar(socket);
+      else enviar(socket, noExiste(msg.code));
+      return;
+    }
+    case 'join_room': {
+      if (socket.jugador) return;
+      const sala = buscarSala(msg.code);
+      if (!sala) {
+        enviar(socket, { type: 'join_error', reason: 'not_found' });
+        return;
+      }
+      const { error, jugador } = sala.unir(socket, msg.name, msg.color);
+      if (error) {
+        enviar(socket, { type: 'join_error', reason: error });
+        return;
+      }
+      enviar(socket, unido(sala, jugador));
+      return;
+    }
+    case 'rejoin': {
+      if (socket.jugador) return;
+      const sala = buscarSala(msg.code);
+      const jugador = sala?.reconectar(socket, msg.token);
+      enviar(socket, jugador ? unido(sala, jugador) : { type: 'rejoin_error' });
+      return;
+    }
+    case 'leave_room':
+      return socket.jugador && socket.sala.quitar(socket.jugador.id);
+  }
+}
+
+const unido = (sala, j) => ({
+  type: 'joined',
+  code: sala.code,
+  token: j.token,
+  state: sala.state,
+  hostConnected: sala.host !== null,
+  player: { id: j.id, name: j.name, color: j.color },
+});
 
 export function attachWebSocket(server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
-  const pantallas = new Set();
-  const mandos = new Map(); // id de jugador → socket
-  const joins = new Map(); // id de jugador → último JOIN, para las pantallas que lleguen después
-
-  const aPantallas = (data, isBinary) => {
-    for (const p of pantallas) p.send(data, { binary: isBinary });
-  };
-  const aPantallasJson = (msg) => aPantallas(JSON.stringify(msg), false);
-
-  function idLibre() {
-    for (let id = 1; id <= MAX_JUGADORES; id++) if (!mandos.has(id)) return id;
-    return null;
-  }
 
   wss.on('connection', (socket, req) => {
     const rol = new URL(req.url, 'http://localhost').searchParams.get('rol');
-
-    if (rol === 'pantalla') {
-      pantallas.add(socket);
-      socket.send(JSON.stringify({ type: 'players', ids: [...mandos.keys()] }));
-      for (const join of joins.values()) socket.send(join, { binary: true });
-
-      socket.on('message', (data, isBinary) => {
-        // Por ahora la pantalla solo envía VIBRATE: tipo, jugador, duración.
-        if (!isBinary || data.length < 2 || data[0] !== MSG.VIBRATE) return;
-        mandos.get(data[1])?.send(data, { binary: true });
-      });
-      socket.on('close', () => pantallas.delete(socket));
+    if (rol !== 'pantalla' && rol !== 'mando') {
+      socket.close(4000, 'Falta ?rol=pantalla o ?rol=mando');
       return;
     }
+    socket.sala = null;
+    socket.jugador = null;
+    socket.observando = null;
 
-    if (rol === 'mando') {
-      const id = idLibre();
-      if (id === null) {
-        socket.close(4001, 'Partida llena');
+    socket.on('message', (data, isBinary) => {
+      if (isBinary) {
+        if (data.length < 2) return;
+        if (rol === 'pantalla' && data[0] === MSG.VIBRATE) socket.sala?.vibrar(data);
+        if (rol === 'mando' && socket.jugador) socket.sala.entrada(socket.jugador, data);
         return;
       }
-      mandos.set(id, socket);
-      socket.send(JSON.stringify({ type: 'joined', id }));
-      aPantallasJson({ type: 'player_joined', id });
+      let msg;
+      try {
+        msg = JSON.parse(data);
+      } catch {
+        return;
+      }
+      if (rol === 'pantalla') mensajePantalla(socket, msg);
+      else mensajeMando(socket, msg);
+    });
 
-      socket.on('message', (data, isBinary) => {
-        if (!isBinary || data.length < 2) return;
-        // El servidor manda sobre la identidad: un mando no puede hacerse pasar por otro.
-        // JOIN no lleva jugador en el byte 1, así que se reenvía con el id delante.
-        const salida = data[0] === MSG.JOIN
-          ? Buffer.concat([Buffer.from([MSG.JOIN, id]), data.subarray(1)])
-          : Buffer.from(data);
-        if (data[0] === MSG.JOIN) joins.set(id, salida);
-        else salida[1] = id;
-        aPantallas(salida, true);
-      });
-      socket.on('close', () => {
-        mandos.delete(id);
-        joins.delete(id);
-        aPantallasJson({ type: 'player_left', id });
-      });
-      return;
-    }
-
-    socket.close(4000, 'Falta ?rol=pantalla o ?rol=mando');
+    socket.on('close', () => {
+      if (rol === 'pantalla') socket.sala?.desconectarPantalla(socket);
+      else {
+        socket.sala?.desconectarJugador(socket);
+        socket.observando?.dejarDeObservar(socket);
+      }
+    });
   });
 
   return wss;

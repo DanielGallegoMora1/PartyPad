@@ -4,18 +4,90 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PartyPad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/shared/base.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <main>
-    <section class="unirse">
-      <h1>PartyPad</h1>
-      <img id="qr" src="/qr.svg" alt="Código QR para abrir el mando">
-      <p>Escanea el QR o abre<br><strong id="url-mando">…</strong></p>
-      <p id="estado">Conectando…</p>
-    </section>
-    <section id="pista" class="pista" aria-label="Jugadores"></section>
-  </main>
+<body data-vista="cargando">
+  <div class="fondo" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+
+  <section class="vista vista-cargando" aria-live="polite">
+    <p class="cargando">Conectando con el servidor…</p>
+  </section>
+
+  <section class="vista vista-inicio">
+    <div class="inicio">
+      <div class="burbujas" aria-hidden="true">
+        <span class="avatar" style="--color: #ff4d6d">A</span>
+        <span class="avatar" style="--color: #ffd23f">B</span>
+        <span class="avatar" style="--color: #3ddc84">C</span>
+        <span class="avatar" style="--color: #4d96ff">D</span>
+      </div>
+      <h1 class="logo logo-inicio">Party<span>Pad</span></h1>
+      <p class="lema">Tu móvil es el mando. Escanea el código, elige tu color y a jugar.</p>
+      <button id="crear" class="boton boton-grande" type="button">Crear partida</button>
+      <ol class="pasos">
+        <li><strong>1</strong> Crea la partida en esta pantalla</li>
+        <li><strong>2</strong> Cada jugador escanea el QR con su móvil</li>
+        <li><strong>3</strong> Hasta 8 jugadores, sin instalar nada</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="vista vista-lobby">
+    <header class="barra">
+      <h1 class="logo logo-barra">Party<span>Pad</span></h1>
+      <button id="cerrar" class="boton boton-secundario" type="button">Cerrar sala</button>
+    </header>
+    <div class="lobby">
+      <div class="tarjeta unirse">
+        <h2>Únete desde el móvil</h2>
+        <div class="qr"><img id="qr" alt="Código QR para unirse a la partida"></div>
+        <p class="alternativa">o entra en <strong id="url-corta">…</strong> y escribe el código</p>
+        <div id="codigo" class="codigo" aria-label="Código de la sala"></div>
+      </div>
+      <div class="tarjeta jugadores">
+        <div class="cabecera">
+          <h2>Jugadores</h2>
+          <span id="contador" class="contador">0 / 8</span>
+        </div>
+        <ul id="lista" class="lista"></ul>
+        <div class="acciones">
+          <button id="empezar" class="boton boton-grande" type="button" disabled>Empezar partida</button>
+          <p id="pista-empezar" class="pista-empezar"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="vista vista-partida">
+    <header class="barra">
+      <h1 class="logo logo-barra">Party<span>Pad</span></h1>
+      <span class="sala-mini">Sala <strong id="codigo-partida"></strong></span>
+      <button id="volver" class="boton boton-secundario" type="button">Volver al lobby</button>
+    </header>
+    <div class="partida">
+      <p class="instruccion">Pulsa el botón del móvil para avanzar hasta la meta</p>
+      <div id="carriles" class="carriles"></div>
+    </div>
+  </section>
+
+  <dialog id="dialogo-cerrar" class="dialogo" aria-labelledby="dialogo-cerrar-titulo">
+    <form method="dialog">
+      <div class="dialogo-icono" aria-hidden="true">🚪</div>
+      <h2 id="dialogo-cerrar-titulo">¿Cerrar la sala?</h2>
+      <p id="dialogo-cerrar-texto"></p>
+      <div class="dialogo-acciones">
+        <button class="boton boton-secundario" value="cancelar" autofocus>Seguir en la sala</button>
+        <button class="boton boton-peligro" value="cerrar">Cerrar sala</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+
   <script type="module" src="main.js"></script>
 </body>
 </html>

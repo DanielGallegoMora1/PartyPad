@@ -19,13 +19,14 @@ El primer byte siempre es el tipo de mensaje. El código de estos mensajes va en
 
 | Código | Mensaje | Sentido | Tamaño | Contenido |
 |---|---|---|---|---|
-| `0x01` | JOIN | Mando → servidor | Variable | Tipo, color (1 byte), nombre en UTF-8 |
 | `0x02` | BUTTON | Mando → servidor | 3 bytes | Tipo, jugador, botón (bits 1-7) y estado (bit 0: 1 pulsado, 0 soltado) |
 | `0x03` | TILT | Mando → servidor | 4 bytes | Tipo, jugador, X e Y cuantizados a `int8` |
 | `0x04` | SHAKE | Mando → servidor | 3 bytes | Tipo, jugador, intensidad `uint8` |
 | `0x10` | VIBRATE | Servidor → mando | 4 bytes | Tipo, jugador, duración en ms (`uint16`) |
 
-El servidor es quien asigna el id de cada jugador y se lo comunica al mando con el evento JSON `joined`. Al reenviar las entradas a la pantalla, **sobrescribe el byte de jugador con el id real** de la conexión, para que un mando no pueda hacerse pasar por otro. Como `JOIN` sale del mando antes de que importe su id, no lleva ese byte; el servidor lo **inserta tras el tipo** al reenviarlo, así que la pantalla recibe `JOIN` como tipo, jugador, color y nombre.
+El código `0x01` queda libre: unirse a una sala ocurre una vez por jugador, así que va en JSON como el resto de eventos de sala.
+
+El servidor es quien asigna el id de cada jugador y se lo comunica al mando con el evento JSON `joined`. Al reenviar las entradas a la pantalla, **sobrescribe el byte de jugador con el id real** de la conexión, para que un mando no pueda hacerse pasar por otro.
 
 ### Ejemplo: mensaje TILT
 
@@ -46,7 +47,7 @@ La cuantización pierde precisión (pasamos de unos 7 decimales a 255 niveles), 
 
 ```js
 // shared/protocol.js (borrador)
-export const MSG = { JOIN: 0x01, BUTTON: 0x02, TILT: 0x03, SHAKE: 0x04, VIBRATE: 0x10 };
+export const MSG = { BUTTON: 0x02, TILT: 0x03, SHAKE: 0x04, VIBRATE: 0x10 };
 
 const quantize = (v) => Math.max(-127, Math.min(127, Math.round(v * 127)));
 
@@ -68,6 +69,56 @@ export function decode(buffer) {
   }
 }
 ```
+
+## Eventos de sala (JSON)
+
+Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?rol=mando`. Todos los mensajes llevan un campo `type`.
+
+**Pantalla → servidor**
+
+| Mensaje | Campos | Qué hace |
+|---|---|---|
+| `create_room` | | Crea una sala nueva |
+| `resume_room` | `code`, `token` | Recupera la sala tras recargar la página |
+| `start_game` | | Empieza la partida (2 jugadores o más) |
+| `back_to_lobby` | | Vuelve al lobby |
+| `kick` | `id` | Expulsa a un jugador |
+| `close_room` | | Cierra la sala |
+
+**Servidor → pantalla**
+
+| Mensaje | Campos | Cuándo |
+|---|---|---|
+| `room_created` | `code`, `token` | Sala creada; el token sirve para `resume_room` |
+| `room_resumed` | `code`, `state`, `players` | Sala recuperada |
+| `resume_error` | | El código o el token no valen |
+| `player_joined` | `player` (`id`, `name`, `color`, `connected`) | Entra un jugador |
+| `player_status` | `id`, `connected` | Un jugador se desconecta o vuelve |
+| `player_left` | `id` | Un jugador sale, es expulsado o no vuelve a tiempo |
+
+**Mando → servidor**
+
+| Mensaje | Campos | Qué hace |
+|---|---|---|
+| `room_info` | `code` | Consulta la sala antes de unirse; mientras elige, recibe los cambios de colores |
+| `join_room` | `code`, `name`, `color` | Se une. El nombre tiene como máximo 16 caracteres y el color es un índice de `shared/colores.js` |
+| `rejoin` | `code`, `token` | Vuelve con el token guardado en el móvil |
+| `leave_room` | | Sale de la sala |
+
+**Servidor → mando**
+
+| Mensaje | Campos | Cuándo |
+|---|---|---|
+| `room_info` | `code`, `exists`, `state`, `full`, `takenColors` | Respuesta a `room_info` y cambios de colores |
+| `joined` | `code`, `token`, `state`, `hostConnected`, `player` | Unión o reconexión correcta |
+| `join_error` | `reason`: `not_found`, `started`, `full`, `invalid_name`, `invalid_color`, `color_taken` | No se ha podido unir |
+| `rejoin_error` | | El token ya no vale; hay que unirse como jugador nuevo |
+| `host_status` | `connected` | La pantalla se desconecta o vuelve |
+| `kicked` | | El anfitrión lo ha expulsado |
+
+**Servidor → pantalla y mandos:** `game_start`, `back_to_lobby` y `room_closed`.
+
+**Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos.
 
 ## Compresión delta
 

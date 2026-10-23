@@ -1,9 +1,8 @@
 // Protocolo de mensajes compartido por el servidor, la pantalla y el mando.
 // Ver docs/03-protocolo.md. Funciona igual en el navegador y en Node.
 
-export const MSG = { JOIN: 0x01, BUTTON: 0x02, TILT: 0x03, SHAKE: 0x04, VIBRATE: 0x10 };
-
-const MAX_NOMBRE = 16; // en caracteres
+// Solo las entradas frecuentes van en binario. Unirse y el resto de eventos de sala van en JSON.
+export const MSG = { BUTTON: 0x02, TILT: 0x03, SHAKE: 0x04, VIBRATE: 0x10 };
 
 const quantize = (v) => Math.max(-127, Math.min(127, Math.round(v * 127)));
 const toUint8 = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
@@ -13,16 +12,6 @@ function message(size, type, player) {
   view.setUint8(0, type);
   view.setUint8(1, player);
   return view;
-}
-
-// JOIN tal como lo envía el mando: tipo, color, nombre. El servidor añade el jugador.
-export function encodeJoin(color, name) {
-  const bytes = new TextEncoder().encode([...name].slice(0, MAX_NOMBRE).join(''));
-  const out = new Uint8Array(2 + bytes.length);
-  out[0] = MSG.JOIN;
-  out[1] = color;
-  out.set(bytes, 2);
-  return out.buffer;
 }
 
 // Byte 2: bits 1-7 número de botón, bit 0 pulsado (1) o soltado (0).
@@ -54,7 +43,6 @@ export function encodeVibrate(player, ms) {
 }
 
 // Acepta ArrayBuffer, Uint8Array o Buffer de Node. Devuelve null si el mensaje no es válido.
-// JOIN se decodifica tal como llega a la pantalla, con el jugador que añade el servidor.
 export function decode(data) {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -62,14 +50,6 @@ export function decode(data) {
   const player = view.getUint8(1);
 
   switch (view.getUint8(0)) {
-    case MSG.JOIN:
-      if (view.byteLength < 3) return null;
-      return {
-        type: 'join',
-        player,
-        color: view.getUint8(2),
-        name: new TextDecoder().decode(bytes.subarray(3)),
-      };
     case MSG.BUTTON: {
       if (view.byteLength < 3) return null;
       const b = view.getUint8(2);

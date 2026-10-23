@@ -63,9 +63,9 @@ La idea es tener algo jugable desde la segunda semana. A partir de ahí todo lo 
 
 ## Forma de trabajar con Git
 
-- **`main`** siempre funciona. No se sube directamente a `main`.
+- **`main`** siempre funciona.
 - Cada tarea va en su rama: `feature/lobby`, `feature/tilt-maze`, `feature/protocolo-binario`…
-- Se integra con **pull request** y el otro lo revisa por encima antes de aceptarlo.
+- Sin pull requests: al ser un equipo de dos, se trabaja con **commits** en la rama y se fusiona en `main` cuando la tarea funciona.
 - Las tareas se apuntan como **issues** de GitHub, con la etiqueta `daniel` o `vicente` y el hito de la semana.
 - Mensajes de commit cortos y en español: `Añade lobby con QR`, `Corrige reconexión del mando`.
 

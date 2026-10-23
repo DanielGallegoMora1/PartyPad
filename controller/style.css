@@ -8,4 +8,47 @@ body {
   color: #f5f5f5;
   touch-action: manipulation;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+main {
+  display: grid;
+  justify-items: center;
+  gap: 2rem;
+}
+
+#estado {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+#boton {
+  width: min(70vw, 70vh);
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 50%;
+  background: #e94560;
+  color: #fff;
+  font: bold 4rem system-ui, sans-serif;
+  box-shadow: 0 0.5rem 0 #9c2a3f;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#boton.pulsado {
+  transform: translateY(0.5rem);
+  box-shadow: none;
+}
+
+#boton:disabled {
+  opacity: 0.4;
+}
+
+body.vibra {
+  animation: destello 0.2s;
+}
+
+@keyframes destello {
+  from { background: #f5f5f5; }
 }

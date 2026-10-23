@@ -76,8 +76,16 @@ Requiere Node.js 20 o superior.
 
 ```bash
 npm install
-npm start      # o npm run dev para reiniciar al guardar cambios
+npm run dev    # con túnel HTTPS: el móvil se conecta desde cualquier red
 ```
+
+| Comando | Para qué |
+|---|---|
+| `npm run dev` | Desarrollo y pruebas con móviles. Abre un túnel de Cloudflare (sin cuenta) y el QR apunta a una URL pública `https://….trycloudflare.com`, así que funciona en cualquier red, también en la de la universidad, y no muestra la IP del ordenador. La URL cambia cada vez que se arranca. Reinicia el servidor al guardar cambios. |
+| `npm run local` | Sin túnel ni internet. El mando solo se puede abrir desde el propio ordenador. |
+| `npm start` | Despliegue. Si se define `PUBLIC_URL`, el QR apunta a ella. |
+
+Abre la pantalla principal en `http://localhost:3000/` y escanea el QR con el móvil.
 
 | Ruta | Qué sirve |
 |---|---|

@@ -7,3 +7,83 @@ body {
   background: #1b1b2f;
   color: #f5f5f5;
 }
+
+main {
+  width: min(100% - 2rem, 70rem);
+  display: grid;
+  grid-template-columns: 18rem 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.unirse {
+  text-align: center;
+}
+
+.unirse h1 {
+  margin-top: 0;
+}
+
+#qr {
+  width: 100%;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+#url-mando {
+  word-break: break-all;
+}
+
+#estado {
+  opacity: 0.7;
+}
+
+.pista {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pista:empty::before {
+  content: 'Esperando jugadores…';
+  opacity: 0.7;
+  font-size: 1.5rem;
+}
+
+.carril {
+  position: relative;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  background: #2a2a45;
+}
+
+.jugador {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.5rem;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  color: #1b1b2f;
+  transition: left 0.15s ease-out, transform 0.1s;
+}
+
+.jugador.pulsado {
+  transform: scale(0.85);
+}
+
+.nombre {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+}
+
+@media (max-width: 40rem) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}

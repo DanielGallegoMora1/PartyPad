@@ -7,13 +7,16 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node server/tunel.js --watch",
+    "local": "node --watch server/index.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "cloudflared": "^0.7.3",
     "express": "^5.3.0",
+    "qrcode": "^1.5.4",
     "ws": "^8.22.0"
   }
 }

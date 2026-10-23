@@ -8,9 +8,13 @@
 </head>
 <body>
   <main>
-    <h1>PartyPad</h1>
-    <p>Pantalla principal</p>
-    <p id="estado">Cargando…</p>
+    <section class="unirse">
+      <h1>PartyPad</h1>
+      <img id="qr" src="/qr.svg" alt="Código QR para abrir el mando">
+      <p>Escanea el QR o abre<br><strong id="url-mando">…</strong></p>
+      <p id="estado">Conectando…</p>
+    </section>
+    <section id="pista" class="pista" aria-label="Jugadores"></section>
   </main>
   <script type="module" src="main.js"></script>
 </body>

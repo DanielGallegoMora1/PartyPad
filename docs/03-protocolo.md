@@ -20,7 +20,7 @@ El primer byte siempre es el tipo de mensaje. El código de estos mensajes va en
 | Código | Mensaje | Sentido | Tamaño | Contenido |
 |---|---|---|---|---|
 | `0x01` | JOIN | Mando → servidor | Variable | Tipo, color (1 byte), nombre en UTF-8 |
-| `0x02` | BUTTON | Mando → servidor | 3 bytes | Tipo, jugador, botón y estado (bits) |
+| `0x02` | BUTTON | Mando → servidor | 3 bytes | Tipo, jugador, botón (bits 1-7) y estado (bit 0: 1 pulsado, 0 soltado) |
 | `0x03` | TILT | Mando → servidor | 4 bytes | Tipo, jugador, X e Y cuantizados a `int8` |
 | `0x04` | SHAKE | Mando → servidor | 3 bytes | Tipo, jugador, intensidad `uint8` |
 | `0x10` | VIBRATE | Servidor → mando | 4 bytes | Tipo, jugador, duración en ms (`uint16`) |

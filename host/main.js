@@ -1,18 +1,17 @@
 // Pantalla principal de PartyPad: inicio, lobby con el QR y los jugadores, y partida.
-// La partida todavía es el prototipo: cada jugador avanza por su carril al pulsar el botón.
-import { decode, encodeVibrate } from '/shared/protocol.js';
+// La partida la lleva el servidor; aquí se muestran sus fases y el minijuego se dibuja con Phaser (juego.js).
 import { COLORES } from '/shared/colores.js';
+import * as juego from './juego.js';
 
 const MAX_JUGADORES = 8;
 const MIN_JUGADORES = 2;
-const PASOS = 10; // pulsaciones para llegar a la meta
 const CLAVE_SALA = 'partypad:sala'; // para recuperar la sala al recargar la página
 
 const $ = (id) => document.getElementById(id);
 
 let socket = null;
 let codigo = null;
-let jugadores = new Map(); // id → { id, name, color, connected, pasos, ficha }
+let jugadores = new Map(); // id → { id, name, color, connected }
 
 // Almacenamiento: si el navegador no lo permite, simplemente no se recupera la sala al recargar.
 const sesion = {
@@ -67,15 +66,14 @@ function conectar() {
   });
 
   socket.addEventListener('message', ({ data }) => {
-    if (typeof data === 'string') return alRecibir(JSON.parse(data));
-    const msg = decode(data);
-    if (msg?.type === 'button') alPulsar(msg.player, msg.pressed);
+    if (typeof data === 'string') alRecibir(JSON.parse(data));
   });
 
   socket.addEventListener('close', ({ code }) => {
     if (code === 4003) {
       sesion.borrar();
       codigo = null;
+      juego.desmontar();
       mostrar('inicio');
       avisar('La sala se ha abierto en otra pantalla', 5000);
       return;
@@ -99,7 +97,7 @@ function alRecibir(msg) {
       mostrar('inicio');
       break;
     case 'player_joined':
-      jugadores.set(msg.player.id, { ...msg.player, pasos: 0 });
+      jugadores.set(msg.player.id, msg.player);
       pintarLobby();
       break;
     case 'player_status': {
@@ -107,23 +105,45 @@ function alRecibir(msg) {
       if (!j) break;
       j.connected = msg.connected;
       pintarLobby();
-      j.ficha?.closest('.carril').classList.toggle('desconectado', !j.connected);
+      juego.conexion(j.id, j.connected);
       break;
     }
     case 'player_left':
       jugadores.delete(msg.id);
       pintarLobby();
-      pintarCarriles();
+      juego.quitar(msg.id);
+      $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
       break;
     case 'game_start':
       empezarPartida();
       break;
+    case 'round_intro':
+      alIntro(msg);
+      break;
+    case 'countdown':
+      alCuenta(msg);
+      break;
+    case 'round_start':
+      alEmpezarRonda(msg);
+      break;
+    case 'state_update':
+      ponerFin(msg.ms);
+      juego.actualizar(msg);
+      break;
+    case 'round_end':
+      alResultados(msg);
+      break;
+    case 'podium':
+      alPodio(msg);
+      break;
     case 'back_to_lobby':
+      juego.desmontar();
       mostrar('lobby');
       break;
     case 'room_closed':
       sesion.borrar();
       codigo = null;
+      juego.desmontar();
       mostrar('inicio');
       break;
   }
@@ -133,7 +153,7 @@ function alRecibir(msg) {
 
 function entrarEnSala(code, state, players) {
   codigo = code;
-  jugadores = new Map(players.map((p) => [p.id, { ...p, pasos: 0 }]));
+  jugadores = new Map(players.map((p) => [p.id, p]));
 
   $('codigo').replaceChildren(
     ...[...code].map((letra) => Object.assign(document.createElement('span'), { textContent: letra })),
@@ -146,6 +166,7 @@ function entrarEnSala(code, state, players) {
     .catch(() => {});
 
   pintarLobby();
+  // A mitad de partida, el servidor manda justo después la fase en la que está.
   if (state === 'jugando') empezarPartida();
   else mostrar('lobby');
 }
@@ -206,51 +227,127 @@ function pintarLobby() {
 
 // Partida
 
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆' };
+let fin = 0; // performance.now() en que acaba la fase actual, para los relojes
+let ultimaCuenta = null;
+
+const escenario = $('escenario');
+const fase = (nombre) => (escenario.dataset.fase = nombre);
+const jugadoresJuego = () => [...jugadores.values()].map((j) => ({ id: j.id, name: j.name, hex: colorDe(j), connected: j.connected }));
+
+// Vuelve a lanzar la animación CSS de un elemento.
+function reanimar(el) {
+  el.classList.remove('anima');
+  void el.offsetWidth;
+  el.classList.add('anima');
+}
+
+function ponerFin(ms) {
+  fin = performance.now() + ms;
+  pintarRelojes();
+}
+
+function pintarRelojes() {
+  const s = Math.max(0, Math.ceil((fin - performance.now()) / 1000));
+  for (const el of document.querySelectorAll('[data-reloj]')) el.textContent = s;
+  escenario.classList.toggle('apurado', s <= 5);
+  if (escenario.dataset.fase === 'cuenta' && s > 0 && s !== ultimaCuenta) {
+    ultimaCuenta = s;
+    $('cuenta').textContent = s;
+    reanimar($('cuenta'));
+  }
+}
+setInterval(pintarRelojes, 100);
+
 function empezarPartida() {
-  for (const j of jugadores.values()) j.pasos = 0;
-  pintarCarriles();
+  fase('');
+  $('ronda').textContent = '';
   mostrar('partida');
 }
 
-function pintarCarriles() {
-  const carriles = [...jugadores.values()]
-    .sort((a, b) => a.id - b.id)
-    .map((j) => {
-      const carril = document.createElement('div');
-      carril.className = 'carril';
-      carril.classList.toggle('desconectado', !j.connected);
-
-      const ficha = document.createElement('span');
-      ficha.className = 'avatar';
-      ficha.style.setProperty('--color', colorDe(j));
-      ficha.textContent = inicial(j.name);
-
-      const nombre = document.createElement('span');
-      nombre.className = 'nombre';
-      nombre.textContent = j.name;
-
-      carril.append(nombre, ficha);
-      j.ficha = ficha;
-      colocar(j);
-      return carril;
-    });
-  $('carriles').replaceChildren(...carriles);
+// Común a todas las fases de una ronda: monta su minijuego (si no lo estaba ya) y pone el reloj.
+function enRonda(msg) {
+  $('ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
+  juego.montar(msg.minigame.id, msg.round, jugadoresJuego());
+  ponerFin(msg.ms);
 }
 
-function colocar(j) {
-  // De la salida a la meta, descontando el ancho de la ficha y los márgenes.
-  j.ficha.style.left = `calc(0.5rem + (100% - 5.5rem) * ${j.pasos / PASOS})`;
+function alIntro(msg) {
+  enRonda(msg);
+  $('intro-ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
+  $('intro-icono').textContent = ICONOS[msg.minigame.control] ?? '🎮';
+  $('intro-nombre').textContent = msg.minigame.name;
+  $('intro-texto').textContent = msg.minigame.instructions;
+  $('intro-tiempo').style.animationDuration = `${msg.ms}ms`;
+  reanimar($('intro-tiempo'));
+  fase('intro');
 }
 
-function alPulsar(id, pressed) {
+function alCuenta(msg) {
+  ultimaCuenta = null;
+  fase('cuenta');
+  enRonda(msg);
+}
+
+function alEmpezarRonda(msg) {
+  enRonda(msg);
+  juego.actualizar(msg);
+  fase('jugando');
+  reanimar(escenario.querySelector('.ya'));
+}
+
+function avatar(j) {
+  const el = document.createElement('span');
+  el.className = 'avatar';
+  el.style.setProperty('--color', colorDe(j));
+  el.textContent = inicial(j.name);
+  return el;
+}
+
+// Una fila de la clasificación. puntos es lo ganado en la ronda; en el podio no se muestra.
+function fila({ id, place, total }, puntos, i) {
   const j = jugadores.get(id);
-  if (!j?.ficha || document.body.dataset.vista !== 'partida') return;
-  j.ficha.classList.toggle('pulsado', pressed);
-  if (!pressed) return;
+  const li = document.createElement('li');
+  li.style.animationDelay = `${i * 90}ms`;
+  const puesto = Object.assign(document.createElement('span'), { className: 'puesto', textContent: `${place}º` });
+  const nombre = Object.assign(document.createElement('span'), { className: 'nombre', textContent: j?.name ?? '' });
+  li.append(puesto, avatar(j ?? { name: '?', color: 0 }), nombre);
+  if (puntos !== undefined) li.append(Object.assign(document.createElement('span'), { className: 'ganados', textContent: `+${puntos}` }));
+  li.append(Object.assign(document.createElement('span'), { className: 'total', textContent: `${total} pts` }));
+  return li;
+}
 
-  j.pasos = (j.pasos + 1) % (PASOS + 1);
-  colocar(j);
-  if (j.pasos === PASOS) socket.send(encodeVibrate(id, 200));
+function alResultados(msg) {
+  enRonda(msg);
+  $('resultados-ronda').textContent = `${msg.minigame.name} · Ronda ${msg.round} de ${msg.rounds}`;
+  $('resultados-siguiente').textContent = msg.last ? 'El podio, en' : 'Siguiente ronda en';
+  const puntos = new Map(msg.results.map((r) => [r.id, r.points]));
+  $('resultados-lista').replaceChildren(...msg.ranking.filter((c) => jugadores.has(c.id)).map((c, i) => fila(c, puntos.get(c.id) ?? 0, i)));
+  fase('resultados');
+}
+
+function alPodio(msg) {
+  ponerFin(0);
+  juego.desmontar();
+  $('ronda').textContent = '';
+  const ranking = msg.ranking.filter((c) => jugadores.has(c.id));
+  const primeros = ranking.slice(0, 3);
+  // De izquierda a derecha: segundo, primero y tercero.
+  const escalones = [primeros[1], primeros[0], primeros[2]].filter(Boolean).map((c) => {
+    const j = jugadores.get(c.id);
+    const el = document.createElement('div');
+    el.className = 'escalon';
+    el.dataset.puesto = Math.min(c.place, 3);
+    const nombre = Object.assign(document.createElement('span'), { className: 'nombre', textContent: j.name });
+    const total = Object.assign(document.createElement('span'), { className: 'total', textContent: `${c.total} pts` });
+    const bloque = Object.assign(document.createElement('span'), { className: 'bloque', textContent: `${c.place}º` });
+    el.append(avatar(j), nombre, total, bloque);
+    return el;
+  });
+  $('podio').replaceChildren(...escalones);
+  $('podio-resto').replaceChildren(...ranking.slice(3).map((c, i) => fila(c, undefined, i)));
+  $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
+  fase('podio');
 }
 
 // Botones
@@ -258,6 +355,7 @@ function alPulsar(id, pressed) {
 $('crear').addEventListener('click', () => enviar({ type: 'create_room' }));
 $('empezar').addEventListener('click', () => enviar({ type: 'start_game' }));
 $('volver').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
+$('otra-vez').addEventListener('click', () => enviar({ type: 'start_game' }));
 const dialogoCerrar = $('dialogo-cerrar');
 
 $('cerrar').addEventListener('click', () => {

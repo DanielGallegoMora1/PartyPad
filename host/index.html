@@ -65,12 +65,49 @@
   <section class="vista vista-partida">
     <header class="barra">
       <h1 class="logo logo-barra">Party<span>Pad</span></h1>
+      <span id="ronda" class="ronda"></span>
       <span class="sala-mini">Sala <strong id="codigo-partida"></strong></span>
       <button id="volver" class="boton boton-secundario" type="button">Volver al lobby</button>
     </header>
-    <div class="partida">
-      <p class="instruccion">Pulsa el botón del móvil para avanzar hasta la meta</p>
-      <div id="carriles" class="carriles"></div>
+    <div id="escenario" class="escenario">
+      <div id="juego" class="juego"></div>
+
+      <div class="capa capa-jugando" aria-hidden="true">
+        <span class="reloj"><span data-reloj></span> s</span>
+        <span class="ya">¡Ya!</span>
+      </div>
+
+      <div class="capa capa-intro">
+        <div class="tarjeta intro">
+          <p id="intro-ronda" class="etiqueta"></p>
+          <p id="intro-icono" class="intro-icono" aria-hidden="true"></p>
+          <h2 id="intro-nombre"></h2>
+          <p id="intro-texto" class="intro-texto"></p>
+          <div class="tiempo"><span id="intro-tiempo"></span></div>
+        </div>
+      </div>
+
+      <div class="capa capa-cuenta" aria-live="assertive">
+        <span id="cuenta" class="cuenta"></span>
+      </div>
+
+      <div class="capa capa-resultados">
+        <div class="tarjeta resultados">
+          <p id="resultados-ronda" class="etiqueta"></p>
+          <h2>Clasificación</h2>
+          <ol id="resultados-lista" class="clasificacion"></ol>
+          <p class="siguiente"><span id="resultados-siguiente"></span> <strong><span data-reloj></span> s</strong></p>
+        </div>
+      </div>
+
+      <div class="capa capa-podio">
+        <div class="podio-contenido">
+          <h2 class="podio-titulo">¡Fin de la partida!</h2>
+          <div id="podio" class="podio"></div>
+          <ol id="podio-resto" class="clasificacion podio-resto"></ol>
+          <button id="otra-vez" class="boton boton-grande" type="button">Jugar otra vez</button>
+        </div>
+      </div>
     </div>
   </section>
 

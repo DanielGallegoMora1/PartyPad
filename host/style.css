@@ -317,72 +317,364 @@ body[data-vista='partida'] .vista-partida {
   min-height: 1.5em;
 }
 
-/* Partida (prototipo con el botón) */
+/* Partida */
 
-.partida {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding: 1rem 2.5rem 2.5rem;
+.vista-partida {
+  height: 100vh;
 }
 
-.instruccion {
-  font-size: 1.6rem;
+.ronda {
+  margin-left: auto;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.ronda:empty {
+  display: none;
+}
+
+.escenario {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.juego {
+  position: absolute;
+  inset: 0;
+}
+
+.juego canvas {
+  display: block;
+}
+
+/* Capas encima del minijuego: solo se ve la de la fase actual */
+
+.capa {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.escenario[data-fase='intro'] .capa-intro,
+.escenario[data-fase='cuenta'] .capa-cuenta,
+.escenario[data-fase='jugando'] .capa-jugando,
+.escenario[data-fase='resultados'] .capa-resultados,
+.escenario[data-fase='podio'] .capa-podio {
+  display: grid;
+  animation: aparecer 0.35s ease-out;
+}
+
+.capa-intro,
+.capa-cuenta,
+.capa-resultados,
+.capa-podio {
+  background: rgb(20 15 46 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.capa-podio {
+  background: rgb(20 15 46 / 0.85);
+}
+
+.etiqueta {
+  color: var(--texto-suave);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.95rem;
+}
+
+/* Instrucciones */
+
+.intro {
+  width: min(100%, 44rem);
+  padding: 2.5rem 3rem;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
   text-align: center;
 }
 
-.carriles {
-  display: grid;
-  gap: 1rem;
+.intro-icono {
+  font-size: 5rem;
+  animation: tambaleo 0.6s ease-in-out infinite alternate;
 }
 
-.carril {
-  position: relative;
-  height: 4.5rem;
+@keyframes tambaleo {
+  from { rotate: -12deg; }
+  to { rotate: 12deg; }
+}
+
+.intro h2 {
+  font-size: 3.2rem;
+}
+
+.intro-texto {
+  font-size: 1.5rem;
+  color: var(--texto-suave);
+  max-width: 30ch;
+}
+
+.tiempo {
+  width: 100%;
+  height: 0.6rem;
+  margin-top: 1rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+
+.tiempo span {
+  display: block;
+  height: 100%;
+  background: var(--degradado);
+  transform-origin: left;
+}
+
+.tiempo span.anima {
+  animation: vaciar linear forwards;
+}
+
+@keyframes vaciar {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* Cuenta atrás */
+
+.cuenta {
+  font-size: clamp(10rem, 30vh, 22rem);
+  font-weight: 700;
+  line-height: 1;
+  background: var(--degradado);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1rem 2rem rgb(0 0 0 / 0.4));
+}
+
+.cuenta.anima {
+  animation: salto 1s ease-out;
+}
+
+@keyframes salto {
+  0% { transform: scale(1.8); opacity: 0; }
+  20% { transform: scale(1); opacity: 1; }
+  80% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(0.6); opacity: 0; }
+}
+
+/* Durante la ronda */
+
+.capa-jugando {
+  pointer-events: none;
+  place-items: start center;
+}
+
+.reloj {
+  padding: 0.4rem 1.4rem;
   border-radius: 999px;
   background: var(--tarjeta);
   border: 1px solid var(--tarjeta-borde);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s, border-color 0.2s;
 }
 
-/* La meta, a la derecha */
-.carril::after {
-  content: '';
+.apurado .reloj {
+  color: var(--peligro);
+  border-color: var(--peligro);
+  animation: latir 1s ease-in-out infinite;
+}
+
+@keyframes latir {
+  50% { transform: scale(1.08); }
+}
+
+.ya {
   position: absolute;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  width: 0.6rem;
-  border-radius: 0.3rem;
-  background: repeating-linear-gradient(#fff 0 0.5rem, #1a0f2e 0.5rem 1rem);
-  opacity: 0.6;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(8rem, 25vh, 18rem);
+  font-weight: 700;
+  color: var(--exito);
+  opacity: 0;
+  text-shadow: 0 1rem 3rem rgb(0 0 0 / 0.5);
 }
 
-.carril .avatar {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  width: 3.5rem;
-  font-size: 1.5rem;
-  transition: left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.1s;
-  z-index: 1;
+.ya.anima {
+  animation: ya 0.9s ease-out;
 }
 
-.carril .avatar.pulsado {
-  transform: scale(0.85);
+@keyframes ya {
+  0% { transform: scale(0.5); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
 }
 
-.carril .nombre {
-  position: absolute;
-  top: 50%;
-  right: 2rem;
-  translate: 0 -50%;
+/* Clasificación: resultados de la ronda y resto del podio */
+
+.resultados {
+  width: min(100%, 46rem);
+  max-height: 100%;
+  padding: 2rem 2.5rem;
+  display: grid;
+  gap: 1rem;
+  overflow: auto;
+}
+
+.resultados h2 {
+  font-size: 2.2rem;
+}
+
+.clasificacion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.clasificacion li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 1.1rem 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  animation: entrar 0.4s ease-out backwards;
+}
+
+.clasificacion .puesto {
+  width: 2.6rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.clasificacion li:nth-child(1) .puesto { color: #ffd23f; }
+.clasificacion li:nth-child(2) .puesto { color: #d9d9e8; }
+.clasificacion li:nth-child(3) .puesto { color: #e0975a; }
+
+.clasificacion .avatar {
+  width: 2.6rem;
+  font-size: 1.2rem;
+}
+
+.clasificacion .nombre {
+  flex: 1;
+  font-size: 1.3rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ganados {
+  color: var(--exito);
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.total {
+  min-width: 4.5rem;
+  text-align: right;
   color: var(--texto-suave);
-  font-weight: 500;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.carril.desconectado {
-  opacity: 0.4;
+.siguiente {
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.siguiente strong {
+  color: var(--texto);
+}
+
+/* Podio */
+
+.podio-contenido {
+  width: min(100%, 52rem);
+  display: grid;
+  justify-items: center;
+  gap: 1.5rem;
+}
+
+.podio-titulo {
+  font-size: 3rem;
+}
+
+.podio {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.escalon {
+  flex: 0 1 12rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  animation: subir 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.escalon[data-puesto='1'] { animation-delay: 0.6s; }
+.escalon[data-puesto='2'] { animation-delay: 0.3s; }
+
+@keyframes subir {
+  from { transform: translateY(4rem); opacity: 0; }
+}
+
+.escalon .avatar {
+  width: 5rem;
+  font-size: 2.2rem;
+}
+
+.escalon[data-puesto='1'] .avatar {
+  width: 6.5rem;
+  font-size: 3rem;
+  animation: botar 2.4s ease-in-out infinite;
+}
+
+.escalon .nombre {
+  max-width: 100%;
+  font-size: 1.4rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.escalon .bloque {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  margin-top: 0.4rem;
+  border-radius: 1rem 1rem 0 0;
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #1a0f2e;
+}
+
+.escalon[data-puesto='1'] .bloque { height: 11rem; background: #ffd23f; }
+.escalon[data-puesto='2'] .bloque { height: 8rem; background: #d9d9e8; }
+.escalon[data-puesto='3'] .bloque { height: 5.5rem; background: #e0975a; }
+
+.podio-resto {
+  width: min(100%, 34rem);
+}
+
+.podio-resto:empty {
+  display: none;
 }
 
 @media (max-width: 52rem) {
@@ -394,8 +686,7 @@ body[data-vista='partida'] .vista-partida {
     padding: 1rem;
   }
 
-  .lobby,
-  .partida {
+  .lobby {
     padding: 0 1rem 1rem;
   }
 }

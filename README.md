@@ -51,7 +51,7 @@ Los diagramas también están como imagen en [`docs/diagramas/png`](docs/diagram
 
 ## Tecnologías
 
-- **Servidor:** Node.js con Socket.IO o `ws`
+- **Servidor:** Node.js con Express y `ws`
 - **Pantalla principal:** Phaser 3 y `qrcode`
 - **Mando:** HTML, CSS y JavaScript con las APIs DeviceMotion/DeviceOrientation y Vibration, y un Service Worker
 - **Red y compresión:** MessagePack y protocolo binario propio con `ArrayBuffer`
@@ -72,7 +72,7 @@ partypad/
 
 ## Ejecución
 
-Requiere Node.js 20 o superior.
+Requiere Node.js 20 o superior. `npm install` instala todo lo necesario, también Phaser, que el servidor sirve a la pantalla desde `node_modules`: no hay que descargar ni copiar nada a mano.
 
 ```bash
 npm install
@@ -87,11 +87,14 @@ npm run dev    # con túnel HTTPS: el móvil se conecta desde cualquier red
 
 Abre la pantalla principal en `http://localhost:3000/` y escanea el QR con el móvil.
 
+Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad hay que usar `npm run dev`. Sin sensor (por ejemplo, abriendo el mando en otra pestaña del PC para probar), tocar la pantalla muy rápido cuenta como agitar.
+
 | Ruta | Qué sirve |
 |---|---|
 | `http://localhost:3000/` | Pantalla principal (`host/`) |
 | `http://localhost:3000/mando` | Mando del móvil (`controller/`) |
 | `/shared/…` | Código común (`shared/`) |
 | `/packs/manifest.json` | Manifest de packs (`packs/`) |
+| `/lib/phaser/…` | Phaser, desde `node_modules/phaser/dist` |
 
 El puerto se cambia con la variable de entorno `PORT`.

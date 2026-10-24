@@ -26,7 +26,7 @@ El primer byte siempre es el tipo de mensaje. El código de estos mensajes va en
 
 El código `0x01` queda libre: unirse a una sala ocurre una vez por jugador, así que va en JSON como el resto de eventos de sala.
 
-El servidor es quien asigna el id de cada jugador y se lo comunica al mando con el evento JSON `joined`. Al reenviar las entradas a la pantalla, **sobrescribe el byte de jugador con el id real** de la conexión, para que un mando no pueda hacerse pasar por otro.
+El servidor es quien asigna el id de cada jugador y se lo comunica al mando con el evento JSON `joined`. Las entradas de los mandos no llegan a la pantalla: las procesa la partida en el servidor, que **ignora el byte de jugador y usa el id de la conexión**, para que un mando no pueda hacerse pasar por otro.
 
 ### Ejemplo: mensaje TILT
 
@@ -80,7 +80,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 |---|---|---|
 | `create_room` | | Crea una sala nueva |
 | `resume_room` | `code`, `token` | Recupera la sala tras recargar la página |
-| `start_game` | | Empieza la partida (2 jugadores o más) |
+| `start_game` | | Empieza la partida (2 jugadores o más). También desde el podio, para jugar otra vez |
 | `back_to_lobby` | | Vuelve al lobby |
 | `kick` | `id` | Expulsa a un jugador |
 | `close_room` | | Cierra la sala |
@@ -116,7 +116,31 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `host_status` | `connected` | La pantalla se desconecta o vuelve |
 | `kicked` | | El anfitrión lo ha expulsado |
 
-**Servidor → pantalla y mandos:** `game_start`, `back_to_lobby` y `room_closed`.
+**Servidor → pantalla y mandos:** `game_start` (con `rounds`, la lista de minijuegos), `back_to_lobby` y `room_closed`.
+
+### Mensajes de la partida
+
+La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatro fases y, tras la última, llega el podio. Al cambiar de fase, el servidor avisa a la pantalla y a cada mando; si alguien se reconecta a mitad, le vuelve a mandar la fase en la que está.
+
+| Fase | Mensaje | Duración |
+|---|---|---|
+| Instrucciones | `round_intro` | 5 s |
+| Cuenta atrás | `countdown` | 3 s |
+| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms | Lo que diga el minijuego |
+| Resultados | `round_end` | 8 s |
+| Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
+
+Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar` o `tocar`.
+
+| Mensaje | Además, a la pantalla | Además, al mando |
+|---|---|---|
+| `round_start` | El estado inicial del minijuego | |
+| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado) | |
+| `round_end` | `last`, `results` (`id`, `place`, `points`) y `ranking` (`id`, `place`, `total`) | `place`, `points`, `total` y `overall` (puesto en la general) |
+| `podium` | `ranking` | `place` y `total` |
+| `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms) |
+
+Los puntos por puesto en cada ronda son 10, 8, 6, 5, 4, 3, 2 y 1. Los empatados comparten puesto y puntos.
 
 **Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos.
 

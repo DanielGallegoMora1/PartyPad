@@ -18,6 +18,8 @@ app.use('/', express.static(path.join(ROOT, 'host')));
 app.use('/mando', express.static(path.join(ROOT, 'controller')));
 app.use('/shared', express.static(path.join(ROOT, 'shared')));
 app.use('/packs', express.static(path.join(ROOT, 'packs')));
+// Librerías de npm que usa el navegador: así basta con npm install, sin copiar nada a mano.
+app.use('/lib/phaser', express.static(path.join(ROOT, 'node_modules/phaser/dist')));
 
 const server = createServer(app);
 attachWebSocket(server);

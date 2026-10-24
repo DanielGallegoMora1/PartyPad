@@ -2,6 +2,8 @@
 // Los eventos de sala van en JSON (ver docs/03-protocolo.md).
 import { randomUUID } from 'node:crypto';
 import { COLORES } from '../shared/colores.js';
+import { decode, encodeVibrate } from '../shared/protocol.js';
+import { Partida } from './partida.js';
 
 export const MAX_JUGADORES = 8;
 const MAX_NOMBRE = 16; // en caracteres
@@ -44,6 +46,7 @@ export class Sala {
     this.hostToken = randomUUID();
     this.host = null;
     this.state = 'lobby'; // lobby | jugando
+    this.partida = null;
     this.jugadores = new Map(); // id → { id, name, color, token, socket, timer }
     this.observadores = new Set(); // mandos que eligen nombre y color, para avisarles de los colores libres
     this.timerCierre = null;
@@ -72,6 +75,10 @@ export class Sala {
     for (const j of this.jugadores.values()) enviar(j.socket, msg);
   }
 
+  aJugador(id, msg) {
+    enviar(this.jugadores.get(id)?.socket, msg);
+  }
+
   avisarObservadores() {
     const info = this.info();
     for (const s of this.observadores) enviar(s, info);
@@ -97,17 +104,21 @@ export class Sala {
     this.timerCierre = setTimeout(() => this.cerrar(), ESPERA_PANTALLA);
   }
 
+  // Desde el lobby o, para jugar otra vez, desde el podio.
   empezar() {
-    if (this.state !== 'lobby' || this.jugadores.size < 2) return;
+    const enPodio = this.partida?.fase === 'podio';
+    if ((this.state !== 'lobby' && !enPodio) || this.jugadores.size < 2) return;
+    this.partida?.parar();
     this.state = 'jugando';
-    const msg = { type: 'game_start' };
-    this.aPantalla(msg);
-    this.aMandos(msg);
+    this.partida = new Partida(this);
+    this.partida.empezar();
     this.avisarObservadores();
   }
 
   volverAlLobby() {
     if (this.state === 'lobby') return;
+    this.partida.parar();
+    this.partida = null;
     this.state = 'lobby';
     const msg = { type: 'back_to_lobby' };
     this.aPantalla(msg);
@@ -119,6 +130,7 @@ export class Sala {
 
   cerrar() {
     clearTimeout(this.timerCierre);
+    this.partida?.parar();
     const msg = { type: 'room_closed' };
     for (const j of this.jugadores.values()) {
       clearTimeout(j.timer);
@@ -191,8 +203,9 @@ export class Sala {
     if (!j || j.socket !== socket) return;
     j.socket = null;
     this.aPantalla({ type: 'player_status', id: j.id, connected: false });
-    // En partida se le guarda el sitio; los minijuegos decidirán qué hacer con él.
+    // En partida se le guarda el sitio y el minijuego decide qué hacer mientras tanto.
     if (this.state === 'lobby') this.esperarReconexion(j);
+    else this.partida.desconectado(j.id);
   }
 
   esperarReconexion(j) {
@@ -209,18 +222,24 @@ export class Sala {
     if (motivo) enviar(j.socket, { type: motivo });
     if (j.socket) j.socket.jugador = j.socket.sala = null;
     this.aPantalla({ type: 'player_left', id });
+    this.partida?.quitar(id);
+    // Sin jugadores no hay partida que seguir.
+    if (this.state === 'jugando' && this.jugadores.size === 0) this.volverAlLobby();
     this.avisarObservadores();
   }
 
-  // Entradas binarias: el servidor pone el id real del jugador para que nadie se haga pasar por otro.
+  // Entradas binarias de los mandos. El jugador es el del socket, no el del mensaje,
+  // para que nadie se haga pasar por otro.
   entrada(j, data) {
-    if (!this.host) return;
-    const salida = Buffer.from(data);
-    salida[1] = j.id;
-    this.host.send(salida, { binary: true });
+    const msg = decode(data);
+    if (msg) this.partida?.entrada(j.id, msg);
   }
 
   vibrar(data) {
     this.jugadores.get(data[1])?.socket?.send(data, { binary: true });
+  }
+
+  vibrarJugador(id, ms) {
+    this.jugadores.get(id)?.socket?.send(encodeVibrate(id, ms), { binary: true });
   }
 }

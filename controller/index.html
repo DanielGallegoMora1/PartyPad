@@ -57,9 +57,48 @@
     <button id="salir" class="boton boton-secundario pie" type="button">Salir de la sala</button>
   </section>
 
+  <!-- Partida. La ficha del jugador se ve arriba en todas sus vistas. -->
+  <p class="jugador-partida"><span id="partida-avatar" class="avatar"></span><span id="partida-nombre"></span></p>
+
+  <section class="vista vista-instrucciones">
+    <p id="instr-ronda" class="sala-etiqueta"></p>
+    <p id="instr-icono" class="instr-icono" aria-hidden="true"></p>
+    <h1 id="instr-nombre" class="instr-nombre"></h1>
+    <p id="instr-texto" class="suave"></p>
+    <button id="activar-movimiento" class="boton boton-grande" type="button" hidden>Activar el movimiento</button>
+    <p id="sin-movimiento" class="suave aviso-sensor" hidden>Sin sensor de movimiento: toca la pantalla muy rápido para avanzar.</p>
+  </section>
+
+  <section class="vista vista-cuenta">
+    <p class="suave">¡Prepárate!</p>
+    <span id="cuenta" class="cuenta"></span>
+  </section>
+
+  <section class="vista vista-agitar">
+    <div id="zona-agitar" class="zona-agitar">
+      <div class="medidor"><span id="medidor"></span></div>
+      <p id="agitar-texto" class="agitar-texto">¡Agita!</p>
+      <p id="agitar-pista" class="suave"></p>
+    </div>
+  </section>
+
   <section class="vista vista-partida">
-    <p class="jugador-partida"><span id="partida-avatar" class="avatar"></span><span id="partida-nombre"></span></p>
     <button id="boton" class="boton-juego" type="button" aria-label="Botón A">A</button>
+  </section>
+
+  <section class="vista vista-resultados">
+    <p id="res-ronda" class="sala-etiqueta"></p>
+    <p id="res-puesto" class="puesto-grande"></p>
+    <p id="res-puntos" class="res-puntos"></p>
+    <p id="res-total" class="suave"></p>
+    <p class="suave pie">Mira la pantalla grande</p>
+  </section>
+
+  <section class="vista vista-podio">
+    <p id="podio-medalla" class="podio-medalla" aria-hidden="true"></p>
+    <h1 id="podio-titulo"></h1>
+    <p id="podio-total" class="suave"></p>
+    <p class="suave pie">El anfitrión puede empezar otra partida</p>
   </section>
 
   <section class="vista vista-mensaje">

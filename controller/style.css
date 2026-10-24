@@ -17,6 +17,11 @@ body[data-vista='codigo'] .vista-codigo,
 body[data-vista='perfil'] .vista-perfil,
 body[data-vista='espera'] .vista-espera,
 body[data-vista='partida'] .vista-partida,
+body[data-vista='instrucciones'] .vista-instrucciones,
+body[data-vista='cuenta'] .vista-cuenta,
+body[data-vista='agitar'] .vista-agitar,
+body[data-vista='resultados'] .vista-resultados,
+body[data-vista='podio'] .vista-podio,
 body[data-vista='mensaje'] .vista-mensaje {
   display: flex;
   flex-direction: column;
@@ -232,18 +237,155 @@ legend {
   color: var(--jugador);
 }
 
-/* Partida */
-
-.vista-partida {
-  justify-content: space-between !important;
-}
+/* Partida: la ficha del jugador va arriba en todas sus vistas */
 
 .jugador-partida {
-  display: flex;
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  display: none;
   align-items: center;
   gap: 0.6rem;
   font-size: 1.2rem;
   font-weight: 600;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+body[data-vista='instrucciones'] .jugador-partida,
+body[data-vista='cuenta'] .jugador-partida,
+body[data-vista='agitar'] .jugador-partida,
+body[data-vista='partida'] .jugador-partida,
+body[data-vista='resultados'] .jugador-partida,
+body[data-vista='podio'] .jugador-partida {
+  display: flex;
+}
+
+.vista-instrucciones,
+.vista-resultados,
+.vista-podio {
+  text-align: center;
+}
+
+.instr-icono {
+  font-size: 5rem;
+  animation: tambaleo 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes tambaleo {
+  from { rotate: -12deg; }
+  to { rotate: 12deg; }
+}
+
+.instr-nombre {
+  font-size: 2.2rem;
+}
+
+.aviso-sensor {
+  max-width: 22rem;
+  color: var(--acento-2);
+}
+
+/* Cuenta atrás */
+
+.cuenta {
+  font-size: 10rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jugador);
+}
+
+.cuenta.anima {
+  animation: salto 1s ease-out;
+}
+
+@keyframes salto {
+  0% { transform: scale(1.8); opacity: 0; }
+  20% { transform: scale(1); opacity: 1; }
+  80% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(0.6); opacity: 0; }
+}
+
+/* Agitar: toda la vista es táctil por si no hay acelerómetro */
+
+.vista-agitar {
+  padding: 0 !important;
+}
+
+.zona-agitar {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.medidor {
+  width: min(70vw, 50vh);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 4px dashed color-mix(in srgb, var(--jugador) 50%, transparent);
+}
+
+.medidor span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.35), transparent 45%), var(--jugador);
+  box-shadow: 0 0 3rem color-mix(in srgb, var(--jugador) 60%, transparent);
+  transform: scale(0.25);
+  transition: transform 0.08s linear;
+}
+
+.agitar-texto {
+  font-size: 2.6rem;
+  font-weight: 700;
+}
+
+.en-meta .medidor {
+  border-style: solid;
+  border-color: var(--exito);
+}
+
+.en-meta .medidor span {
+  transform: scale(1);
+  background: var(--exito);
+  box-shadow: 0 0 3rem rgb(61 220 132 / 0.6);
+}
+
+.en-meta .agitar-texto {
+  color: var(--exito);
+}
+
+/* Resultados y podio */
+
+.puesto-grande {
+  font-size: 7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jugador);
+}
+
+.res-puntos {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--exito);
+}
+
+.podio-medalla {
+  font-size: 7rem;
+  animation: botar-suave 2.4s ease-in-out infinite;
+}
+
+.vista-podio h1 {
+  font-size: 2.4rem;
 }
 
 .jugador-partida .avatar {

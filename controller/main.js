@@ -1,9 +1,9 @@
 // Mando de PartyPad: se abre en el móvil al escanear el QR.
 // Flujo: código de sala → nombre y color → espera en el lobby → partida.
 // En la partida, cada ronda: instrucciones → cuenta atrás → control del minijuego → resultados. Al final, podio.
-import { decode, encodeButton, encodeShake } from '/shared/protocol.js';
+import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
-import { estadoPermiso, medir, necesitaPermiso, pedirPermiso } from './agitar.js';
+import { estadoPermiso, medirAgitado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
 const CLAVE_NOMBRE = 'partypad:nombre'; // para no tener que escribirlo cada vez
@@ -16,7 +16,7 @@ let salaPendiente = normalizar(new URLSearchParams(location.search).get('sala'))
 let ocupados = new Set();
 let colorElegido = null;
 let pulsado = false;
-let medicion = null; // medición del acelerómetro mientras se juega un minijuego de agitar
+let medicion = null; // medición del sensor mientras se juega un minijuego de agitar o inclinar
 
 // Almacenamiento: si el navegador no lo permite, solo se pierde la reconexión automática.
 const guardado = {
@@ -389,41 +389,80 @@ function alIntro(msg) {
   $('instr-icono').textContent = ICONOS[minigame.control] ?? '🎮';
   $('instr-nombre').textContent = minigame.name;
   $('instr-texto').textContent = minigame.instructions;
-  pintarPermiso(minigame.control === 'agitar');
+  pintarPermiso(minigame.control);
   mostrar('instrucciones');
 }
 
+// Qué hacer sin sensor de movimiento en cada control.
+const SIN_SENSOR = {
+  agitar: 'Sin sensor de movimiento: toca la pantalla muy rápido para avanzar.',
+  inclinar: 'Sin sensor de movimiento: arrastra el dedo por el círculo para mover tu bola.',
+};
+let controlActual = null;
+
 // En iOS, si aún no se ha dado permiso de movimiento, se ofrece el botón para darlo.
-function pintarPermiso(usaMovimiento) {
+function pintarPermiso(control) {
+  controlActual = control;
+  const usaMovimiento = control in SIN_SENSOR;
   const permiso = estadoPermiso();
   $('activar-movimiento').hidden = !usaMovimiento || !necesitaPermiso || permiso !== 'pendiente';
   $('sin-movimiento').hidden = !usaMovimiento || permiso !== 'denegado';
+  $('sin-movimiento').textContent = SIN_SENSOR[control] ?? '';
 }
 
 $('activar-movimiento').addEventListener('click', async () => {
   await pedirPermiso();
-  pintarPermiso(true);
+  pintarPermiso(controlActual);
 });
+
+const enviarBinario = (datos) => yo && socket.readyState === WebSocket.OPEN && socket.send(datos);
 
 function empezarControl(control) {
   pararMedicion();
-  if (control !== 'agitar') {
-    mostrar('partida');
-    return;
-  }
-  $('zona-agitar').classList.remove('en-meta');
-  $('agitar-texto').textContent = '¡Agita!';
-  medicion = medir({
+  if (control === 'agitar') empezarAgitar();
+  else if (control === 'inclinar') empezarInclinar();
+  else mostrar('partida');
+}
+
+function empezarAgitar() {
+  medicion = medirAgitado({
     alCambiar(nivel) {
       $('medidor').style.transform = `scale(${0.25 + nivel * 0.75})`;
       $('agitar-pista').textContent = medicion?.hayAcelerometro() ? 'Más fuerte, más rápido' : 'Toca la pantalla muy rápido';
     },
     alEnviar(nivel) {
-      if (yo && socket.readyState === WebSocket.OPEN) socket.send(encodeShake(yo.id, nivel));
+      enviarBinario(encodeShake(yo.id, nivel));
     },
   });
   mostrar('agitar');
 }
+
+function empezarInclinar() {
+  const nivel = $('nivel');
+  medicion = medirInclinacion({
+    alCambiar(x, y) {
+      // La bola del nivel va hacia donde rodará la bola de la pantalla.
+      $('burbuja').style.left = `${50 + x * 35}%`;
+      $('burbuja').style.top = `${50 + y * 35}%`;
+      $('inclinar-pista').textContent = medicion?.hayGiroscopio()
+        ? 'Si la bola se mueve sola, pulsa Recalibrar con el móvil en reposo'
+        : 'Arrastra el dedo por el círculo';
+    },
+    alEnviar(x, y) {
+      enviarBinario(encodeTilt(yo.id, x, y));
+    },
+  });
+  nivel.onpointerdown = nivel.onpointermove = (e) => {
+    if (e.type === 'pointermove' && !e.buttons && e.pointerType === 'mouse') return;
+    nivel.setPointerCapture?.(e.pointerId);
+    const r = nivel.getBoundingClientRect();
+    medicion?.arrastrar(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
+  };
+  nivel.onpointerup = nivel.onpointercancel = () => medicion?.arrastrar(0, 0);
+  mostrar('inclinar');
+}
+
+$('recalibrar').addEventListener('click', () => medicion?.recalibrar());
 
 function pararMedicion() {
   medicion?.parar();
@@ -434,10 +473,8 @@ $('zona-agitar').addEventListener('pointerdown', () => medicion?.tocar());
 
 function alLlegar(puesto) {
   pararMedicion();
-  $('medidor').style.transform = '';
-  $('zona-agitar').classList.add('en-meta');
-  $('agitar-texto').textContent = `¡Meta! ${puesto}º`;
-  $('agitar-pista').textContent = 'Espera a que lleguen los demás';
+  $('meta-puesto').textContent = `${puesto}º`;
+  mostrar('meta');
 }
 
 function alResultados(msg) {

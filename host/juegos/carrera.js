@@ -16,8 +16,9 @@ const numero = (hex) => Phaser.Display.Color.HexStringToColor(hex).color;
 const inicial = (nombre) => [...nombre][0]?.toUpperCase() ?? '?';
 
 export class Carrera extends Phaser.Scene {
-  init({ jugadores = [] }) {
+  init({ jugadores = [], inicio = {} }) {
     this.listo = false;
+    this.inicio = inicio;
     this.corredores = new Map(
       jugadores.map((j) => [
         j.id,
@@ -33,6 +34,7 @@ export class Carrera extends Phaser.Scene {
     this.scale.on('resize', this.construir, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.construir, this));
     this.listo = true;
+    this.actualizar(this.inicio);
   }
 
   texturas() {

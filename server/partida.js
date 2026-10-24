@@ -7,7 +7,6 @@ const T_INSTRUCCIONES = 5000;
 const T_CUENTA = 3000;
 const T_RESULTADOS = 8000;
 const TICK = 50; // ms entre pasos de la simulación
-const ENVIO = 100; // ms entre state_update a la pantalla
 const PUNTOS = [10, 8, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda
 
 export class Partida {
@@ -61,12 +60,13 @@ export class Partida {
     this.cambiarFase('jugando');
     let anterior = Date.now();
     let ultimoEnvio = 0;
+    const { envio } = this.juego.constructor; // ms entre state_update a la pantalla
     this.intervalo = setInterval(() => {
       const ahora = Date.now();
       this.juego.avanzar((ahora - anterior) / 1000);
       anterior = ahora;
       if (this.juego.terminado()) return this.terminarRonda();
-      if (ahora - ultimoEnvio >= ENVIO) {
+      if (ahora - ultimoEnvio >= envio) {
         ultimoEnvio = ahora;
         this.sala.aPantalla(this.estado());
       }
@@ -107,8 +107,9 @@ export class Partida {
 
   avisarPantalla() {
     if (this.fase === 'podio') return this.sala.aPantalla({ type: 'podium', ranking: this.clasificacion() });
-    const msg = { type: TIPOS[this.fase], ...this.base() };
-    if (this.fase === 'jugando') Object.assign(msg, this.juego.estado());
+    // La pantalla recibe también el escenario del minijuego (lo que no cambia en la ronda) y su estado,
+    // para dibujarlo desde las instrucciones o si se recarga a mitad.
+    const msg = { type: TIPOS[this.fase], ...this.base(), setup: this.juego.escenario(), ...this.juego.estado() };
     if (this.fase === 'resultados') {
       msg.last = this.ronda === this.rondas.length - 1;
       msg.results = this.resultados;

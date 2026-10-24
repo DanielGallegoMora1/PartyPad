@@ -24,6 +24,7 @@ function mensajePantalla(socket, msg) {
       }
       encontrada.conectarPantalla(socket);
       enviar(socket, { type: 'room_resumed', code: encontrada.code, state: encontrada.state, players: encontrada.lista });
+      encontrada.partida?.avisarPantalla();
       return;
     }
     case 'start_game':
@@ -65,7 +66,12 @@ function mensajeMando(socket, msg) {
       if (socket.jugador) return;
       const sala = buscarSala(msg.code);
       const jugador = sala?.reconectar(socket, msg.token);
-      enviar(socket, jugador ? unido(sala, jugador) : { type: 'rejoin_error' });
+      if (!jugador) {
+        enviar(socket, { type: 'rejoin_error' });
+        return;
+      }
+      enviar(socket, unido(sala, jugador));
+      sala.partida?.conectado(jugador);
       return;
     }
     case 'leave_room':

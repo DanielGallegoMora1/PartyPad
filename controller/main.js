@@ -1,7 +1,9 @@
 // Mando de PartyPad: se abre en el móvil al escanear el QR.
 // Flujo: código de sala → nombre y color → espera en el lobby → partida.
-import { decode, encodeButton } from '/shared/protocol.js';
+// En la partida, cada ronda: instrucciones → cuenta atrás → control del minijuego → resultados. Al final, podio.
+import { decode, encodeButton, encodeShake } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
+import { estadoPermiso, medir, necesitaPermiso, pedirPermiso } from './agitar.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
 const CLAVE_NOMBRE = 'partypad:nombre'; // para no tener que escribirlo cada vez
@@ -14,6 +16,7 @@ let salaPendiente = normalizar(new URLSearchParams(location.search).get('sala'))
 let ocupados = new Set();
 let colorElegido = null;
 let pulsado = false;
+let medicion = null; // medición del acelerómetro mientras se juega un minijuego de agitar
 
 // Almacenamiento: si el navegador no lo permite, solo se pierde la reconexión automática.
 const guardado = {
@@ -120,7 +123,8 @@ function alRecibir(msg) {
       $('partida-avatar').textContent = inicial(yo.name);
       $('partida-nombre').textContent = yo.name;
       $('aviso-pantalla').hidden = msg.hostConnected;
-      mostrar(msg.state === 'jugando' ? 'partida' : 'espera');
+      // A mitad de partida, el servidor manda justo después la fase en la que está.
+      mostrar('espera');
       break;
 
     case 'join_error':
@@ -145,10 +149,39 @@ function alRecibir(msg) {
       break;
 
     case 'game_start':
-      if (yo) mostrar('partida');
+      mantenerPantalla();
+      break;
+
+    case 'round_intro':
+      alIntro(msg);
+      break;
+
+    case 'countdown':
+      pararMedicion();
+      ponerFin(msg.ms);
+      mostrar('cuenta');
+      pintarCuenta();
+      break;
+
+    case 'round_start':
+      empezarControl(msg.minigame.control);
+      break;
+
+    case 'finished':
+      alLlegar(msg.place);
+      break;
+
+    case 'round_end':
+      alResultados(msg);
+      break;
+
+    case 'podium':
+      alPodio(msg);
       break;
 
     case 'back_to_lobby':
+      pararMedicion();
+      soltarPantalla();
       if (yo) mostrar('espera');
       break;
 
@@ -172,6 +205,8 @@ function alRecibir(msg) {
 }
 
 function salirDeLaSala(olvidarSala) {
+  pararMedicion();
+  soltarPantalla();
   guardado.borrar(CLAVE_SESION);
   yo = null;
   ponerColor(colorElegido);
@@ -284,6 +319,8 @@ $('form-perfil').addEventListener('submit', (e) => {
     return;
   }
   guardado.guardar(CLAVE_NOMBRE, name);
+  // El envío del formulario es un toque: buen momento para que iOS pida el permiso de movimiento.
+  pedirPermiso();
   $('unirme').disabled = true;
   enviar({ type: 'join_room', code: salaPendiente, name, color: colorElegido });
 });
@@ -298,6 +335,127 @@ $('salir').addEventListener('click', () => {
 });
 
 // Partida
+
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆' };
+const MEDALLAS = ['🥇', '🥈', '🥉'];
+let fin = 0; // performance.now() en que acaba la fase actual
+let ultimaCuenta = null;
+
+function ponerFin(ms) {
+  fin = performance.now() + ms;
+  ultimaCuenta = null;
+}
+
+function pintarCuenta() {
+  if (document.body.dataset.vista !== 'cuenta') return;
+  const s = Math.max(1, Math.ceil((fin - performance.now()) / 1000));
+  if (s === ultimaCuenta) return;
+  ultimaCuenta = s;
+  const cuenta = $('cuenta');
+  cuenta.textContent = s;
+  cuenta.classList.remove('anima');
+  void cuenta.offsetWidth; // reinicia la animación
+  cuenta.classList.add('anima');
+}
+setInterval(pintarCuenta, 100);
+
+// Que no se apague la pantalla mientras se juega, aunque nadie la toque al agitar.
+let bloqueo = null;
+async function mantenerPantalla() {
+  if (bloqueo && !bloqueo.released) return;
+  try {
+    bloqueo = await navigator.wakeLock?.request('screen');
+  } catch {}
+}
+
+function soltarPantalla() {
+  bloqueo?.release().catch(() => {});
+  bloqueo = null;
+}
+
+// El bloqueo se pierde al cambiar de app; se recupera al volver si sigue la partida.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && bloqueo) {
+    bloqueo = null;
+    mantenerPantalla();
+  }
+});
+
+function alIntro(msg) {
+  pararMedicion();
+  mantenerPantalla();
+  const { minigame } = msg;
+  $('instr-ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
+  $('instr-icono').textContent = ICONOS[minigame.control] ?? '🎮';
+  $('instr-nombre').textContent = minigame.name;
+  $('instr-texto').textContent = minigame.instructions;
+  pintarPermiso(minigame.control === 'agitar');
+  mostrar('instrucciones');
+}
+
+// En iOS, si aún no se ha dado permiso de movimiento, se ofrece el botón para darlo.
+function pintarPermiso(usaMovimiento) {
+  const permiso = estadoPermiso();
+  $('activar-movimiento').hidden = !usaMovimiento || !necesitaPermiso || permiso !== 'pendiente';
+  $('sin-movimiento').hidden = !usaMovimiento || permiso !== 'denegado';
+}
+
+$('activar-movimiento').addEventListener('click', async () => {
+  await pedirPermiso();
+  pintarPermiso(true);
+});
+
+function empezarControl(control) {
+  pararMedicion();
+  if (control !== 'agitar') {
+    mostrar('partida');
+    return;
+  }
+  $('zona-agitar').classList.remove('en-meta');
+  $('agitar-texto').textContent = '¡Agita!';
+  medicion = medir({
+    alCambiar(nivel) {
+      $('medidor').style.transform = `scale(${0.25 + nivel * 0.75})`;
+      $('agitar-pista').textContent = medicion?.hayAcelerometro() ? 'Más fuerte, más rápido' : 'Toca la pantalla muy rápido';
+    },
+    alEnviar(nivel) {
+      if (yo && socket.readyState === WebSocket.OPEN) socket.send(encodeShake(yo.id, nivel));
+    },
+  });
+  mostrar('agitar');
+}
+
+function pararMedicion() {
+  medicion?.parar();
+  medicion = null;
+}
+
+$('zona-agitar').addEventListener('pointerdown', () => medicion?.tocar());
+
+function alLlegar(puesto) {
+  pararMedicion();
+  $('medidor').style.transform = '';
+  $('zona-agitar').classList.add('en-meta');
+  $('agitar-texto').textContent = `¡Meta! ${puesto}º`;
+  $('agitar-pista').textContent = 'Espera a que lleguen los demás';
+}
+
+function alResultados(msg) {
+  pararMedicion();
+  $('res-ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
+  $('res-puesto').textContent = msg.place ? `${msg.place}º` : '–';
+  $('res-puntos').textContent = `+${msg.points} puntos`;
+  $('res-total').textContent = `Llevas ${msg.total} puntos · vas ${msg.overall}º`;
+  mostrar('resultados');
+}
+
+function alPodio(msg) {
+  pararMedicion();
+  $('podio-medalla').textContent = MEDALLAS[msg.place - 1] ?? '🎉';
+  $('podio-titulo').textContent = msg.place === 1 ? '¡Has ganado!' : `Has quedado ${msg.place}º`;
+  $('podio-total').textContent = `${msg.total} puntos`;
+  mostrar('podio');
+}
 
 const boton = $('boton');
 

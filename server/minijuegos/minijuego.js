@@ -1,0 +1,63 @@
+// Pone puesto a una lista ya ordenada. Quien empata con el anterior comparte su puesto: 1, 2, 2, 4.
+export function conPuestos(ordenados, empatan) {
+  let puesto = 0;
+  return ordenados.map((x, i) => {
+    if (i === 0 || !empatan(ordenados[i - 1], x)) puesto = i + 1;
+    return { ...x, puesto };
+  });
+}
+
+// Base de los minijuegos. Cada uno hereda de Minijuego e implementa onInput, tick, estado y getResults
+// (ver docs/02-arquitectura.md). La partida lo crea al empezar la ronda y le pasa el tiempo con avanzar().
+export class Minijuego {
+  static id = '';
+  static nombre = '';
+  static instrucciones = '';
+  static control = ''; // qué muestra el mando: 'agitar', 'inclinar' o 'tocar'
+  static duracion = 30_000; // en ms; la ronda termina antes si terminado() lo dice
+
+  // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador.
+  constructor(ids, { vibrar, avisar }) {
+    this.ids = ids;
+    this.vibrar = vibrar;
+    this.avisar = avisar;
+    this.tiempo = 0; // segundos desde que empezó la ronda
+    this.limite = this.constructor.duracion / 1000;
+  }
+
+  static info() {
+    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control };
+  }
+
+  get restante() {
+    return Math.max(0, this.limite - this.tiempo);
+  }
+
+  avanzar(dt) {
+    this.tiempo += dt;
+    this.tick(dt);
+  }
+
+  terminado() {
+    return this.tiempo >= this.limite;
+  }
+
+  // Entradas ya decodificadas de shared/protocol.js: { type: 'shake', intensity }, { type: 'tilt', x, y }…
+  onInput(id, entrada) {}
+
+  tick(dt) {}
+
+  // Lo que necesita la pantalla para dibujar la ronda. Se envía unas 10 veces por segundo.
+  estado() {
+    return {};
+  }
+
+  conectado(id) {}
+  desconectado(id) {}
+  quitar(id) {}
+
+  // [{ id, puesto }] de primero a último; los empatados comparten puesto.
+  getResults() {
+    return [];
+  }
+}

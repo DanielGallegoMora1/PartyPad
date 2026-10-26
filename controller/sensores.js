@@ -219,6 +219,7 @@ export function medirInclinacion({ alCambiar, alEnviar }) {
 const GRADOS_APUNTAR_X = 30; // giro a izquierda o derecha que lleva la mirilla al borde de la pantalla
 const GRADOS_APUNTAR_Y = 20; // y arriba o abajo
 const UMBRAL_APUNTAR = 1; // la puntería necesita más precisión que la inclinación
+const SUAVIZADO_APUNTAR = 0.45; // de 0 a 1: cuánto se acerca la mirilla a la lectura nueva en cada paso (filtra el temblor)
 
 // Apuntar: el móvil como un mando de la tele. x e y entre -1 y 1, 0 en el centro. Girar el móvil a los lados
 // (alpha) mueve la mirilla en horizontal y levantar o bajar la punta (beta), en vertical. La postura con la que se
@@ -226,6 +227,7 @@ const UMBRAL_APUNTAR = 1; // la puntería necesita más precisión que la inclin
 export function medirApuntado({ alCambiar, alEnviar }) {
   let x = 0;
   let y = 0;
+  let objetivo = { x: 0, y: 0 }; // lo que dice el sensor; la mirilla se acerca poco a poco para no temblar
   let neutro = null;
   let enviado = { x: 0, y: 0 }; // cuantizado
   let ultimaLectura = 0;
@@ -236,13 +238,16 @@ export function medirApuntado({ alCambiar, alEnviar }) {
     ultimaLectura = performance.now();
     neutro ??= { alpha: e.alpha, beta: e.beta };
     const giro = ((e.alpha - neutro.alpha + 540) % 360) - 180; // de -180 a 180, sin saltos al pasar por 0
-    x = limitar(-giro / GRADOS_APUNTAR_X);
-    y = limitar(-(e.beta - neutro.beta) / GRADOS_APUNTAR_Y);
+    objetivo = { x: limitar(-giro / GRADOS_APUNTAR_X), y: limitar(-(e.beta - neutro.beta) / GRADOS_APUNTAR_Y) };
   }
 
   const hayGiroscopio = () => performance.now() - ultimaLectura < SIN_SENSOR;
 
   const intervalo = setInterval(() => {
+    if (hayGiroscopio()) {
+      x += (objetivo.x - x) * SUAVIZADO_APUNTAR;
+      y += (objetivo.y - y) * SUAVIZADO_APUNTAR;
+    }
     alCambiar(x, y);
     cuenta.muestra();
     const qx = cuantizar(x);

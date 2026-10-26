@@ -104,7 +104,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | Mensaje | Campos | Qué hace |
 |---|---|---|
 | `room_info` | `code` | Consulta la sala antes de unirse; mientras elige, recibe los cambios de avatares libres |
-| `join_room` | `code`, `name`, `avatar` | Se une. El nombre tiene como máximo 16 caracteres y el avatar es un índice de `shared/avatares.js`. El color lo asigna el servidor (el primero libre de `shared/colores.js`) |
+| `join_room` | `code`, `name`, `avatar`, `color` | Se une. El nombre tiene como máximo 16 caracteres; el avatar es un índice de `shared/avatares.js` y el color, de `shared/colores.js`. Ninguno de los dos se puede repetir en la sala; sin color, el servidor da el primero libre |
 | `rejoin` | `code`, `token` | Vuelve con el token guardado en el móvil |
 | `leave_room` | | Sale de la sala |
 | `input_stats` | `samples`, `sent` | Al dejar de leer el sensor: lecturas tomadas y mensajes enviados, para medir la compresión delta |
@@ -113,9 +113,9 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 
 | Mensaje | Campos | Cuándo |
 |---|---|---|
-| `room_info` | `code`, `exists`, `state`, `full`, `takenAvatars` | Respuesta a `room_info` y cambios de avatares |
+| `room_info` | `code`, `exists`, `state`, `full`, `takenAvatars`, `takenColors` | Respuesta a `room_info` y cambios de avatares o colores |
 | `joined` | `code`, `token`, `state`, `hostConnected`, `player` | Unión o reconexión correcta |
-| `join_error` | `reason`: `not_found`, `started`, `full`, `invalid_name`, `invalid_avatar`, `avatar_taken` | No se ha podido unir |
+| `join_error` | `reason`: `not_found`, `started`, `full`, `invalid_name`, `invalid_avatar`, `avatar_taken`, `invalid_color`, `color_taken` | No se ha podido unir |
 | `rejoin_error` | | El token ya no vale; hay que unirse como jugador nuevo |
 | `host_status` | `connected` | La pantalla se desconecta o vuelve |
 | `kicked` | | El anfitrión lo ha expulsado |

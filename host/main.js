@@ -279,10 +279,9 @@ function pintarLobby() {
     return li;
   });
 
-  // Huecos libres: al menos 8 en total y siempre uno más que jugadores, hasta 16. Con más de 8, tarjetas compactas.
-  const huecos = Math.min(MAX_JUGADORES, Math.max(8, ordenados.length + 1));
-  lista.classList.toggle('muchos', huecos > 8);
-  for (let i = ordenados.length; i < huecos; i++) {
+  // Siempre los 16 huecos, en tarjetas compactas para que quepan.
+  lista.classList.add('muchos');
+  for (let i = ordenados.length; i < MAX_JUGADORES; i++) {
     const li = document.createElement('li');
     li.className = 'hueco';
     li.innerHTML = '<span class="avatar">?</span><span>Libre</span>';

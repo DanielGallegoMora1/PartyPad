@@ -67,6 +67,7 @@ export class Sala {
       state: this.state,
       full: this.jugadores.size >= MAX_JUGADORES,
       takenAvatars: [...this.jugadores.values()].map((j) => j.avatar),
+      takenColors: [...this.jugadores.values()].map((j) => j.color),
     };
   }
 
@@ -174,8 +175,8 @@ export class Sala {
     socket.observando = null;
   }
 
-  // El jugador elige nombre y avatar; el color se lo da el servidor (el primero libre).
-  unir(socket, name, avatar) {
+  // El jugador elige nombre, avatar y color, sin repetir ni avatar ni color. Sin color, se le da el primero libre.
+  unir(socket, name, avatar, color) {
     if (this.state !== 'lobby') return { error: 'started' };
     if (this.jugadores.size >= MAX_JUGADORES) return { error: 'full' };
     name = limpiarNombre(name);
@@ -183,7 +184,9 @@ export class Sala {
     if (!Number.isInteger(avatar) || avatar < 0 || avatar >= AVATARES.length) return { error: 'invalid_avatar' };
     const otros = [...this.jugadores.values()];
     if (otros.some((j) => j.avatar === avatar)) return { error: 'avatar_taken' };
-    const color = COLORES.findIndex((_, i) => !otros.some((j) => j.color === i));
+    if (color === undefined || color === null) color = COLORES.findIndex((_, i) => !otros.some((j) => j.color === i));
+    if (!Number.isInteger(color) || color < 0 || color >= COLORES.length) return { error: 'invalid_color' };
+    if (otros.some((j) => j.color === color)) return { error: 'color_taken' };
 
     let id = 1;
     while (this.jugadores.has(id)) id++;

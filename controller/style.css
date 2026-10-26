@@ -386,9 +386,19 @@ body[data-vista='podio'] .jugador-partida {
 
 /* Apuntar: un recuadro con la forma de la pantalla grande y un gran botón de disparo */
 
+/* La vista mide justo la pantalla y el botón ocupa lo que sobra: así cabe entero en cualquier móvil. */
+body[data-vista='apuntar'] .vista-apuntar {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  justify-content: flex-start;
+  gap: 1rem;
+}
+
 .mira {
   position: relative;
-  width: min(86vw, 60vh);
+  flex: none;
+  width: min(86vw, 50vh);
   aspect-ratio: 16 / 9;
   margin-top: 3rem; /* debajo de la ficha del jugador */
   border-radius: 1rem;
@@ -410,12 +420,32 @@ body[data-vista='podio'] .jugador-partida {
   border-radius: 50%;
   border: 4px solid var(--jugador);
   box-shadow: 0 0 1rem var(--jugador);
+  transition: left 0.05s linear, top 0.05s linear;
 }
 
-.boton-disparo {
-  width: min(64vw, 40vh);
-  margin: auto 0 0;
-  font-size: 2.4rem;
+.vista-apuntar .suave {
+  flex: none;
+  font-size: 0.95rem;
+}
+
+/* El hueco ocupa lo que sobra de la pantalla y el botón es el mayor círculo que cabe dentro */
+.hueco-disparo {
+  flex: 1 1 0;
+  min-height: 6rem;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.boton-juego.boton-disparo {
+  width: min(100cqw, 100cqh, 72vw, 22rem);
+  margin: 0;
+  font-size: min(2.6rem, 18cqmin);
+}
+
+.vista-apuntar .boton-secundario {
+  flex: none;
 }
 
 /* Meta */

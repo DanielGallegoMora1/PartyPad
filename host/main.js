@@ -451,5 +451,14 @@ dialogoCerrar.addEventListener('close', () => {
   if (dialogoCerrar.returnValue === 'cerrar') enviar({ type: 'close_room' });
 });
 
+// Errores a la vista: si algo falla en una escena (por ejemplo, la de un pack), el juego sigue y aquí se avisa,
+// para que se pueda contar qué ha pasado.
+juego.alError((err, escena, metodo) => {
+  console.error(`Error en la escena ${escena} (${metodo}):`, err);
+  avisar(`⚠️ Error en ${escena} (${metodo}): ${err?.message ?? err}`, 10000);
+});
+window.addEventListener('error', (e) => avisar(`⚠️ Error: ${e.message}`, 10000));
+window.addEventListener('unhandledrejection', (e) => avisar(`⚠️ Error: ${e.reason?.message ?? e.reason}`, 10000));
+
 conectar();
 actualizarPacks();

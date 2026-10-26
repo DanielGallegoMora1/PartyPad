@@ -120,7 +120,8 @@ export class Laberinto extends Minijuego {
   constructor(ids, opciones) {
     super(ids, opciones);
     const centro = Math.floor(FILAS / 2);
-    this.plaza = { x: 0, y: centro - 1, w: 2, h: 3 };
+    // Con más de 8 jugadores la plaza de salida es más grande, para que quepan todas las bolas.
+    this.plaza = ids.length > 8 ? { x: 0, y: centro - 2, w: 3, h: 5 } : { x: 0, y: centro - 1, w: 2, h: 3 };
     this.meta = { x: COLUMNAS - 1, y: centro };
     this.mapa = generar({ x: 0, y: centro }, this.plaza);
     this.paredes = tramos(this.mapa).map(([x1, y1, x2, y2]) => ({
@@ -132,15 +133,16 @@ export class Laberinto extends Minijuego {
     }));
     this.distancia = distancias(this.mapa, this.meta);
 
-    // Las bolas empiezan repartidas por la plaza, en dos columnas.
+    // Las bolas empiezan repartidas por la plaza, una columna por cada celda de ancho.
+    const columnas = this.plaza.w;
     this.bolas = new Map(
       ids.map((id, i) => {
-        const fila = Math.floor(i / 2);
-        const filas = Math.ceil(ids.length / 2);
+        const fila = Math.floor(i / columnas);
+        const filas = Math.ceil(ids.length / columnas);
         return [
           id,
           {
-            x: this.plaza.x + (i % 2 ? 1.5 : 0.5),
+            x: this.plaza.x + (i % columnas) + 0.5,
             y: this.plaza.y + ((fila + 0.5) * this.plaza.h) / filas,
             vx: 0,
             vy: 0,

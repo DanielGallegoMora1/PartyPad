@@ -65,7 +65,7 @@ export class Reflejos extends Phaser.Scene {
     const { width, height } = this.scale;
     const margen = Math.max(24, Math.min(width, height) * 0.04);
     const reloj = 64; // hueco arriba para el reloj de la ronda
-    const abajo = height * 0.62; // donde empiezan las tarjetas
+    const abajo = height * (this.jugadores.size > 8 ? 0.5 : 0.62); // donde empiezan las tarjetas (dos filas con más de 8)
 
     // El destello verde de la señal ocupa toda la pantalla.
     this.destello = this.add.rectangle(0, 0, width, height, VERDE, 0).setOrigin(0);
@@ -90,16 +90,20 @@ export class Reflejos extends Phaser.Scene {
 
     this.objetos.push(this.destello, this.halo, this.disco, brillo, this.textoDisco, this.subtitulo, this.contador, ...this.puntos);
 
-    // Una tarjeta por jugador, en fila.
+    // Una tarjeta por jugador, en una fila; con más de 8 jugadores, en dos.
     const lista = [...this.jugadores.values()].sort((a, b) => a.id - b.id);
-    const n = Math.max(1, lista.length);
+    const filas = lista.length > 8 ? 2 : 1;
+    const porFila = Math.max(1, Math.ceil(lista.length / filas));
     const hueco = Math.min(20, width * 0.015);
-    const w = Math.min(210, (width - 2 * margen - (n - 1) * hueco) / n);
-    const h = Math.min(height - abajo - margen, w * 1.3);
-    const x0 = (width - (n * w + (n - 1) * hueco)) / 2 + w / 2;
-    const y = abajo + (height - abajo - margen) / 2;
+    const alto = (height - abajo - margen - (filas - 1) * hueco) / filas;
+    const w = Math.min(210, (width - 2 * margen - (porFila - 1) * hueco) / porFila);
+    const h = Math.min(alto, w * 1.3);
     lista.forEach((j, i) => {
-      j.tarjeta = this.tarjeta(j, x0 + i * (w + hueco), y, w, h);
+      const fila = Math.floor(i / porFila);
+      const enFila = Math.min(porFila, lista.length - fila * porFila);
+      const x0 = (width - (enFila * w + (enFila - 1) * hueco)) / 2 + w / 2;
+      const y = abajo + fila * (alto + hueco) + alto / 2;
+      j.tarjeta = this.tarjeta(j, x0 + (i % porFila) * (w + hueco), y, w, h);
       this.objetos.push(j.tarjeta.caja);
     });
 
@@ -115,7 +119,7 @@ export class Reflejos extends Phaser.Scene {
     const ra = Math.min(w * 0.18, h * 0.14);
     const yAvatar = -h / 2 + h * 0.22;
     const avatar = this.add.circle(0, yAvatar, ra, j.color);
-    const letra = this.add.text(0, yAvatar, inicial(j.name), texto(ra * 1.1, TEXTO_OSCURO, '700')).setOrigin(0.5);
+    const letra = this.add.text(0, yAvatar, j.emoji ?? inicial(j.name), texto(ra * 1.1, TEXTO_OSCURO, '700')).setOrigin(0.5);
     const nombre = this.add.text(0, -h / 2 + h * 0.46, j.name, texto(w * 0.11, TEXTO)).setOrigin(0.5);
     if (nombre.width > w * 0.88) nombre.setScale((w * 0.88) / nombre.width);
     const tiempo = this.add.text(0, -h / 2 + h * 0.67, '', texto(w * 0.15, TEXTO, '700')).setOrigin(0.5);

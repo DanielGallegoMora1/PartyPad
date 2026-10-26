@@ -1,11 +1,12 @@
 // Pantalla principal de PartyPad: inicio, lobby con el QR y los jugadores, y partida.
 // La partida la lleva el servidor; aquí se muestran sus fases y el minijuego se dibuja con Phaser (juego.js).
 import { COLORES } from '/shared/colores.js';
+import { AVATARES } from '/shared/avatares.js';
 import * as juego from './juego.js';
 import { sincronizar } from './packs.js';
 import * as sonido from './sonido.js';
 
-const MAX_JUGADORES = 8;
+const MAX_JUGADORES = COLORES.length; // 16
 const MIN_JUGADORES = 2;
 const CLAVE_SALA = 'partypad:sala'; // para recuperar la sala al recargar la página
 
@@ -13,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 
 let socket = null;
 let codigo = null;
-let jugadores = new Map(); // id → { id, name, color, connected }
+let jugadores = new Map(); // id → { id, name, color, avatar, connected }
 let packsListos = []; // ids de los packs descargados y cargados
 let minijuegos = []; // los de la próxima partida, según el servidor
 
@@ -53,7 +54,7 @@ function avisar(texto, ms = 3000) {
 
 const enviar = (msg) => socket?.readyState === WebSocket.OPEN && socket.send(JSON.stringify(msg));
 const colorDe = (j) => COLORES[j.color]?.hex ?? COLORES[0].hex;
-const inicial = (nombre) => [...nombre][0]?.toUpperCase() ?? '?';
+const emojiDe = (j) => AVATARES[j.avatar]?.emoji ?? '?';
 
 // Conexión
 
@@ -239,7 +240,7 @@ function pintarLobby() {
     const avatar = document.createElement('span');
     avatar.className = 'avatar';
     avatar.style.setProperty('--color', colorDe(j));
-    avatar.textContent = inicial(j.name);
+    avatar.textContent = emojiDe(j);
 
     const nombre = document.createElement('span');
     nombre.className = 'nombre';
@@ -247,7 +248,7 @@ function pintarLobby() {
 
     const estado = document.createElement('span');
     estado.className = 'estado-jugador';
-    estado.textContent = j.connected ? COLORES[j.color]?.nombre ?? '' : 'Reconectando…';
+    estado.textContent = j.connected ? AVATARES[j.avatar]?.nombre ?? '' : 'Reconectando…';
 
     const expulsar = document.createElement('button');
     expulsar.className = 'expulsar';
@@ -261,7 +262,10 @@ function pintarLobby() {
     return li;
   });
 
-  for (let i = ordenados.length; i < MAX_JUGADORES; i++) {
+  // Huecos libres: al menos 8 en total y siempre uno más que jugadores, hasta 16. Con más de 8, tarjetas compactas.
+  const huecos = Math.min(MAX_JUGADORES, Math.max(8, ordenados.length + 1));
+  lista.classList.toggle('muchos', huecos > 8);
+  for (let i = ordenados.length; i < huecos; i++) {
     const li = document.createElement('li');
     li.className = 'hueco';
     li.innerHTML = '<span class="avatar">?</span><span>Libre</span>';
@@ -285,7 +289,8 @@ let ultimaCuenta = null;
 
 const escenario = $('escenario');
 const fase = (nombre) => (escenario.dataset.fase = nombre);
-const jugadoresJuego = () => [...jugadores.values()].map((j) => ({ id: j.id, name: j.name, hex: colorDe(j), connected: j.connected }));
+const jugadoresJuego = () =>
+  [...jugadores.values()].map((j) => ({ id: j.id, name: j.name, hex: colorDe(j), emoji: emojiDe(j), connected: j.connected }));
 
 // Vuelve a lanzar la animación CSS de un elemento.
 function reanimar(el) {
@@ -354,7 +359,7 @@ function avatar(j) {
   const el = document.createElement('span');
   el.className = 'avatar';
   el.style.setProperty('--color', colorDe(j));
-  el.textContent = inicial(j.name);
+  el.textContent = emojiDe(j);
   return el;
 }
 
@@ -365,7 +370,7 @@ function fila({ id, place, total }, puntos, i) {
   li.style.animationDelay = `${i * 90}ms`;
   const puesto = Object.assign(document.createElement('span'), { className: 'puesto', textContent: `${place}º` });
   const nombre = Object.assign(document.createElement('span'), { className: 'nombre', textContent: j?.name ?? '' });
-  li.append(puesto, avatar(j ?? { name: '?', color: 0 }), nombre);
+  li.append(puesto, avatar(j ?? { name: '?', color: 0, avatar: -1 }), nombre);
   if (puntos !== undefined) li.append(Object.assign(document.createElement('span'), { className: 'ganados', textContent: `+${puntos}` }));
   li.append(Object.assign(document.createElement('span'), { className: 'total', textContent: `${total} pts` }));
   return li;

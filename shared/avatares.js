@@ -1,0 +1,28 @@
+// Avatares que puede elegir cada jugador. En los mensajes se envía el índice; cada avatar solo puede tenerlo un
+// jugador por sala. Son emojis: se ven en cualquier móvil sin descargar imágenes.
+export const AVATARES = [
+  { nombre: 'Perro', emoji: '🐶' },
+  { nombre: 'Gato', emoji: '🐱' },
+  { nombre: 'Zorro', emoji: '🦊' },
+  { nombre: 'Oso', emoji: '🐻' },
+  { nombre: 'Panda', emoji: '🐼' },
+  { nombre: 'Koala', emoji: '🐨' },
+  { nombre: 'Tigre', emoji: '🐯' },
+  { nombre: 'León', emoji: '🦁' },
+  { nombre: 'Vaca', emoji: '🐮' },
+  { nombre: 'Cerdito', emoji: '🐷' },
+  { nombre: 'Rana', emoji: '🐸' },
+  { nombre: 'Mono', emoji: '🐵' },
+  { nombre: 'Pollito', emoji: '🐥' },
+  { nombre: 'Pingüino', emoji: '🐧' },
+  { nombre: 'Pulpo', emoji: '🐙' },
+  { nombre: 'Unicornio', emoji: '🦄' },
+  { nombre: 'Tortuga', emoji: '🐢' },
+  { nombre: 'Dinosaurio', emoji: '🦖' },
+  { nombre: 'Abeja', emoji: '🐝' },
+  { nombre: 'Búho', emoji: '🦉' },
+  { nombre: 'Fantasma', emoji: '👻' },
+  { nombre: 'Robot', emoji: '🤖' },
+  { nombre: 'Alien', emoji: '👽' },
+  { nombre: 'Calabaza', emoji: '🎃' },
+];

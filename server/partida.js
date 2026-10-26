@@ -8,7 +8,7 @@ const T_INSTRUCCIONES = 5000;
 const T_CUENTA = 3000;
 const T_RESULTADOS = 8000;
 const TICK = 50; // ms entre pasos de la simulación
-const PUNTOS = [10, 8, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda
+const PUNTOS = [15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda; del 12º en adelante, 0
 
 export class Partida {
   constructor(sala) {

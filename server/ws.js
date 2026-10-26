@@ -65,7 +65,7 @@ function mensajeMando(socket, msg) {
         enviar(socket, { type: 'join_error', reason: 'not_found' });
         return;
       }
-      const { error, jugador } = sala.unir(socket, msg.name, msg.color);
+      const { error, jugador } = sala.unir(socket, msg.name, msg.avatar);
       if (error) {
         enviar(socket, { type: 'join_error', reason: error });
         return;
@@ -98,7 +98,7 @@ const unido = (sala, j) => ({
   token: j.token,
   state: sala.state,
   hostConnected: sala.host !== null,
-  player: { id: j.id, name: j.name, color: j.color },
+  player: { id: j.id, name: j.name, color: j.color, avatar: j.avatar },
 });
 
 export function attachWebSocket(server) {

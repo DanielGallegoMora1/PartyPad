@@ -139,7 +139,7 @@ class Bot {
       }
       this.alRecibir(JSON.parse(data));
     });
-    json(this.s, { type: 'join_room', code, name: this.nombre, color: this.i });
+    json(this.s, { type: 'join_room', code, name: this.nombre, avatar: this.i });
     await new Promise((r) => (this.unido = r));
   }
 

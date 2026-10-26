@@ -2,6 +2,7 @@
 // La señal la da el servidor y se muestra en cuanto llega el estado: aquí no se interpola nada, porque cualquier
 // retraso en la pantalla es tiempo de reacción que se les cuenta a los jugadores.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
+import * as sonido from '../sonido.js';
 
 const TEXTO = '#f7f4ff';
 const TEXTO_SUAVE = '#b9b2d9';
@@ -178,6 +179,7 @@ export class Reflejos extends Phaser.Scene {
     }
     if (!animar) return;
     if (this.fase === 'ya') {
+      sonido.senal();
       this.destello.setAlpha(0.35);
       this.tweens.add({ targets: this.destello, alpha: 0, duration: 450, ease: 'Cubic.easeOut' });
       this.disco.setScale(0.7);
@@ -206,6 +208,8 @@ export class Reflejos extends Phaser.Scene {
   // Alguien acaba de pulsar: la tarjeta salta, o tiembla si se ha adelantado.
   pulsacion(j) {
     const { caja, x } = j.tarjeta;
+    if (j.early) sonido.pronto();
+    else sonido.pulsacion();
     if (j.early) {
       this.tweens.add({ targets: caja, x: x + 10, duration: 50, yoyo: true, repeat: 3, onComplete: () => caja.setX(x) });
     } else {

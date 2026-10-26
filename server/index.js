@@ -13,6 +13,8 @@ const app = express();
 app.set('trust proxy', true); // detrás de un túnel o del despliegue, para saber si es HTTPS
 
 rutasConexion(app);
+// Para que el despliegue sepa que el servidor está arrancado.
+app.get('/salud', (req, res) => res.json({ ok: true }));
 
 app.use('/', express.static(path.join(ROOT, 'host')));
 app.use('/mando', express.static(path.join(ROOT, 'controller')));

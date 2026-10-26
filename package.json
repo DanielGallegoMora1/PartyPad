@@ -15,10 +15,12 @@
     "node": ">=20"
   },
   "dependencies": {
-    "cloudflared": "^0.7.3",
     "express": "^5.3.0",
     "phaser": "^3.90.0",
     "qrcode": "^1.5.4",
     "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "cloudflared": "^0.7.3"
   }
 }

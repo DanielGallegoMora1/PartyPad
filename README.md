@@ -67,6 +67,7 @@ partypad/
 ├── host/                 Pantalla principal: Phaser, lobby, minijuegos
 ├── controller/           Mando del móvil: PWA con sensores
 ├── shared/               Código común: protocolo de mensajes
+├── scripts/              Simulador de jugadores y mediciones
 └── packs/                Packs descargables y manifest.json
 ```
 
@@ -108,3 +109,19 @@ Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad
 | `/lib/phaser/…` | Phaser, desde `node_modules/phaser/dist` |
 
 El puerto se cambia con la variable de entorno `PORT`.
+
+## Despliegue en la nube
+
+Para la demo y para probar en la red de la universidad conviene tenerlo desplegado: HTTPS (obligatorio para los sensores) y una URL fija que no cambia en cada arranque. El servidor no necesita configuración: la URL del QR se saca de la dirección con la que se abre la pantalla, también detrás del proxy HTTPS del despliegue.
+
+**Render (recomendado, gratis):**
+
+1. Entrar en [render.com](https://render.com) con la cuenta de GitHub.
+2. *New → Blueprint* y elegir este repositorio. Render lee [`render.yaml`](render.yaml) y crea el servicio `partypad`.
+3. Al terminar, la pantalla está en `https://partypad.onrender.com` (o el nombre que asigne Render) y el mando en `/mando`. Cada push a `main` se despliega solo.
+
+En el plan gratuito, el servidor se duerme tras 15 minutos sin uso y tarda alrededor de un minuto en despertar: antes de la demo hay que abrir la pantalla con tiempo. Las salas viven en memoria, así que un despliegue nuevo las cierra.
+
+**Otras opciones:** el [`Dockerfile`](Dockerfile) sirve para Fly.io (`fly launch` y `fly deploy`) o Railway (*New project → Deploy from GitHub*). En los dos casos el servidor escucha en el `PORT` que le den.
+
+Render comprueba que el servidor está arrancado con `/salud`.

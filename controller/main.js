@@ -171,6 +171,14 @@ function alRecibir(msg) {
       alLlegar(msg.place);
       break;
 
+    case 'reflex_wait':
+      alEsperarSenal(msg);
+      break;
+
+    case 'reaction':
+      alReaccionar(msg);
+      break;
+
     case 'round_end':
       alResultados(msg);
       break;
@@ -421,7 +429,32 @@ function empezarControl(control) {
   pararMedicion();
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
-  else mostrar('partida');
+  else empezarToque();
+}
+
+// Tocar: un botón grande. En Reflejos, el servidor avisa de cada señal y responde con el tiempo de cada pulsación.
+function empezarToque() {
+  $('toque-senal').textContent = '';
+  pintarToque('', '');
+  mostrar('partida');
+}
+
+function pintarToque(texto, clase) {
+  const estado = $('toque-estado');
+  estado.textContent = texto;
+  estado.className = `toque-estado ${clase}`;
+  boton.classList.toggle('usado', clase !== '');
+}
+
+function alEsperarSenal(msg) {
+  $('toque-senal').textContent = `Señal ${msg.signal} de ${msg.signals}`;
+  pintarToque('Mira la pantalla grande y pulsa cuando se ponga verde', '');
+}
+
+function alReaccionar(msg) {
+  if (msg.early) pintarToque(`¡Demasiado pronto! +${msg.ms / 1000} s`, 'mal');
+  else if (msg.missed) pintarToque('¡Se te ha pasado!', 'mal');
+  else pintarToque(`⚡ ${msg.ms} ms`, 'bien');
 }
 
 function empezarAgitar() {

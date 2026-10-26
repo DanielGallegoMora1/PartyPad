@@ -67,6 +67,10 @@ async function pantalla() {
         vista.estado = msg;
         break;
       case 'state_update':
+        if (msg.phase === 'pausa' && vista.estado?.phase !== 'pausa') {
+          const tiempos = msg.players.map((p) => `${jugadores.get(p.id)}: ${p.early ? 'antes' : p.missed ? 'nada' : `${p.ms} ms`}`);
+          log(`  Señal ${msg.signal}: ${tiempos.join(', ')}`);
+        }
         vista.estado = msg;
         comprobar(msg);
         break;
@@ -234,7 +238,10 @@ class Bot {
         this.vistoYa = null;
       }
       if (this.pulsadoEnSenal) return;
-      if (e.phase === 'espera' && this.adelantarse && Math.random() < 0.05) return this.pulsar();
+      if (e.phase === 'espera' && this.adelantarse && Math.random() < 0.05) {
+        this.adelantos = (this.adelantos ?? 0) + 1;
+        return this.pulsar();
+      }
       if (e.phase === 'ya') {
         this.vistoYa ??= performance.now();
         if (performance.now() - this.vistoYa >= this.reaccion) this.pulsar();
@@ -315,6 +322,7 @@ for (let p = 0; p < PARTIDAS; p++) {
   const bytes = bots.reduce((a, b) => a + b.bytes, 0);
   log(`Partida ${p + 1} en ${segundos.toFixed(1)} s · ${enviados} mensajes binarios de los mandos, ${bytes} B`);
   log(`Vibraciones recibidas: ${bots.map((b) => b.vibraciones).join(', ')}`);
+  log(`Adelantos a propósito: ${bots.map((b) => b.adelantos ?? 0).join(', ')}`);
 }
 
 if (vista.problemas.length) {

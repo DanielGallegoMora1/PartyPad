@@ -126,7 +126,7 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 |---|---|---|
 | Instrucciones | `round_intro` | 5 s |
 | Cuenta atrás | `countdown` | 3 s |
-| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto) | Lo que diga el minijuego |
+| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto y en Reflejos) | Lo que diga el minijuego |
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
@@ -137,12 +137,16 @@ A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la
 | Mensaje | Además, a la pantalla | Además, al mando |
 |---|---|---|
 | `round_start` | El estado inicial del minijuego | |
-| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place` | |
+| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place`. En Reflejos: `phase` (`preparados`, `espera`, `ya` o `pausa`), `signal` (de 1 a `signals`), `signals`, `winner` (el más rápido de la última señal, o `null`) y `players` con `id`, `ms` (tiempo en la señal actual o `null`), `early`, `missed` y `total` (ms acumulados) | |
 | `round_end` | `last`, `results` (`id`, `place`, `points`) y `ranking` (`id`, `place`, `total`) | `place`, `points`, `total` y `overall` (puesto en la general) |
 | `podium` | `ranking` | `place` y `total` |
 | `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms), y otra vez si se reconecta después de llegar |
+| `reflex_wait` | | `signal` y `signals`, al empezar cada señal de Reflejos (y al reconectarse a mitad) |
+| `reaction` | | Tras pulsar en Reflejos: `ms`, o `early: true` (antes de la señal, con un VIBRATE de 400 ms y `ms` de penalización) o `missed: true` (no pulsó a tiempo) |
 
 Los puntos por puesto en cada ronda son 10, 8, 6, 5, 4, 3, 2 y 1. Los empatados comparten puesto y puntos.
+
+**Reflejos:** se juegan 5 señales. Antes de cada una hay una espera al azar de 1,5 a 4,5 s; luego hay 1,5 s para pulsar y 2,5 s mostrando los tiempos. Gana quien menos tiempo suma: pulsar antes de la señal suma 2 s y no pulsar, 1,5 s. El servidor mide el tiempo desde que manda la señal a la pantalla (sin esperar al siguiente `state_update`) hasta que le llega el BUTTON. La señal solo aparece en la pantalla grande, así que su retraso es el mismo para todos y la diferencia entre jugadores solo depende de la subida de cada móvil.
 
 **Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos. El servidor manda un ping de WebSocket a cada conexión cada 15 segundos y cierra la que no ha contestado al anterior: así detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue no cortan las conexiones que pasan un rato sin mensajes.
 

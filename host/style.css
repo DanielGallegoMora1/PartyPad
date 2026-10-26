@@ -306,6 +306,29 @@ body[data-vista='partida'] .vista-partida {
   from { opacity: 0; transform: scale(0.6); }
 }
 
+/* Botón para silenciar, siempre a mano en una esquina */
+
+.boton-sonido {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 5;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  border: 1px solid var(--tarjeta-borde);
+  background: var(--tarjeta);
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.boton-sonido:hover,
+.boton-sonido:focus-visible {
+  opacity: 1;
+}
+
 /* Minijuegos de la partida, con los packs descargados marcados */
 
 .minijuegos {

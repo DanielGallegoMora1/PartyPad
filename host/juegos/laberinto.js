@@ -1,6 +1,7 @@
 // Laberinto inclinable en la pantalla: el servidor manda el mapa al empezar (setup) y las posiciones de las
 // bolas 20 veces por segundo. Aquí se interpolan para que rueden suaves a 60 fps.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
+import * as sonido from '../sonido.js';
 
 const PANEL = 0x1f1747;
 const PARED = 0xc9c1ee;
@@ -225,6 +226,7 @@ export class Laberinto extends Phaser.Scene {
       onComplete: () => this.construir(),
     });
     if (puesto === 1) this.cameras.main.shake(250, 0.005);
+    sonido.meta(puesto);
     const confeti = this.add.particles(x, y, 'confeti', {
       emitting: false,
       lifespan: 1400,

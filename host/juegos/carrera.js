@@ -2,6 +2,7 @@
 // El servidor manda el progreso unas 10 veces por segundo y aquí se interpola para que los cohetes
 // suban suaves a 60 fps. Cuanto más fuerte agita, más grande es la llama, más humo y más tiembla.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
+import * as sonido from '../sonido.js';
 
 const CIELO_ARRIBA = 0x070514;
 const CIELO_ABAJO = 0x3b1f6e;
@@ -265,6 +266,7 @@ export class Carrera extends Phaser.Scene {
     c.medalla.setScale(0);
     this.tweens.add({ targets: c.medalla, scale: 1, duration: 450, ease: 'Back.easeOut' });
     if (puesto === 1) this.cameras.main.shake(250, 0.006);
+    sonido.meta(puesto);
 
     const confeti = this.add.particles(c.x, c.yFin, 'confeti', {
       emitting: false,

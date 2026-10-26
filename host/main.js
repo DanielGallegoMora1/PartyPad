@@ -3,6 +3,7 @@
 import { COLORES } from '/shared/colores.js';
 import * as juego from './juego.js';
 import { sincronizar } from './packs.js';
+import * as sonido from './sonido.js';
 
 const MAX_JUGADORES = 8;
 const MIN_JUGADORES = 2;
@@ -111,6 +112,7 @@ function alRecibir(msg) {
     case 'player_joined':
       jugadores.set(msg.player.id, msg.player);
       pintarLobby();
+      sonido.unirse();
       break;
     case 'player_status': {
       const j = jugadores.get(msg.id);
@@ -123,6 +125,7 @@ function alRecibir(msg) {
     case 'player_left':
       jugadores.delete(msg.id);
       pintarLobby();
+      sonido.salir();
       juego.quitar(msg.id);
       $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
       break;
@@ -304,6 +307,7 @@ function pintarRelojes() {
     ultimaCuenta = s;
     $('cuenta').textContent = s;
     reanimar($('cuenta'));
+    sonido.cuenta();
   }
 }
 setInterval(pintarRelojes, 100);
@@ -341,6 +345,7 @@ function alCuenta(msg) {
 
 function alEmpezarRonda(msg) {
   enRonda(msg);
+  if (escenario.dataset.fase === 'cuenta') sonido.ya(); // no al recargar a mitad de ronda
   fase('jugando');
   reanimar(escenario.querySelector('.ya'));
 }
@@ -371,6 +376,7 @@ function alResultados(msg) {
   $('resultados-ronda').textContent = `${msg.minigame.name} · Ronda ${msg.round} de ${msg.rounds}`;
   $('resultados-siguiente').textContent = msg.last ? 'El podio, en' : 'Siguiente ronda en';
   const puntos = new Map(msg.results.map((r) => [r.id, r.points]));
+  if (escenario.dataset.fase !== 'resultados') sonido.resultados();
   $('resultados-lista').replaceChildren(...msg.ranking.filter((c) => jugadores.has(c.id)).map((c, i) => fila(c, puntos.get(c.id) ?? 0, i)));
   fase('resultados');
 }
@@ -396,10 +402,25 @@ function alPodio(msg) {
   $('podio').replaceChildren(...escalones);
   $('podio-resto').replaceChildren(...ranking.slice(3).map((c, i) => fila(c, undefined, i)));
   $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
+  if (escenario.dataset.fase !== 'podio') sonido.fanfarria();
   fase('podio');
 }
 
 // Botones
+
+// El navegador solo deja sonar algo después de un toque en la página.
+document.addEventListener('pointerdown', sonido.desbloquear);
+const botonSonido = $('sonido');
+function pintarSonido() {
+  botonSonido.textContent = sonido.silenciado() ? '🔇' : '🔊';
+  botonSonido.setAttribute('aria-label', sonido.silenciado() ? 'Activar el sonido' : 'Silenciar');
+  botonSonido.title = botonSonido.getAttribute('aria-label');
+}
+botonSonido.addEventListener('click', () => {
+  sonido.silenciar(!sonido.silenciado());
+  pintarSonido();
+});
+pintarSonido();
 
 $('crear').addEventListener('click', () => enviar({ type: 'create_room' }));
 $('empezar').addEventListener('click', () => enviar({ type: 'start_game' }));

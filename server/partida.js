@@ -66,8 +66,10 @@ export class Partida {
       this.juego.avanzar((ahora - anterior) / 1000);
       anterior = ahora;
       if (this.juego.terminado()) return this.terminarRonda();
-      if (ahora - ultimoEnvio >= envio) {
+      // enviarAhora: el minijuego pide mandar ya el estado, sin esperar al siguiente envío (la señal de Reflejos).
+      if (ahora - ultimoEnvio >= envio || this.juego.enviarAhora) {
         ultimoEnvio = ahora;
+        this.juego.enviarAhora = false;
         this.sala.aPantalla(this.estado());
       }
     }, TICK);
@@ -140,8 +142,9 @@ export class Partida {
   }
 
   conectado(j) {
-    this.juego?.conectado(j.id);
     this.avisarMando(j);
+    // Después de la fase, para que el minijuego pueda reenviarle lo que haga falta (la señal de Reflejos).
+    this.juego?.conectado(j.id);
   }
 
   desconectado(id) {

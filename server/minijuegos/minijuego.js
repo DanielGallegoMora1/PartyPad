@@ -24,6 +24,7 @@ export class Minijuego {
     this.avisar = avisar;
     this.tiempo = 0; // segundos desde que empezó la ronda
     this.limite = this.constructor.duracion / 1000;
+    this.enviarAhora = false; // true para que la partida mande el estado a la pantalla sin esperar
   }
 
   static info() {

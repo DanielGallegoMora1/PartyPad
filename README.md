@@ -87,7 +87,9 @@ npm run dev    # con túnel HTTPS: el móvil se conecta desde cualquier red
 
 Abre la pantalla principal en `http://localhost:3000/` y escanea el QR con el móvil.
 
-Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad hay que usar `npm run dev`. Sin sensor (por ejemplo, abriendo el mando en otra pestaña del PC para probar), tocar la pantalla muy rápido cuenta como agitar.
+Para probar solo algunos minijuegos se pone su id en `MINIJUEGOS`, separados por comas: `MINIJUEGOS=laberinto npm run dev`.
+
+Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad hay que usar `npm run dev`. Sin sensor (por ejemplo, abriendo el mando en otra pestaña del PC para probar), tocar la pantalla muy rápido cuenta como agitar, y arrastrar el dedo por el círculo, como inclinar.
 
 | Ruta | Qué sirve |
 |---|---|

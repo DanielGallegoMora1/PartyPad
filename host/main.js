@@ -268,7 +268,8 @@ function empezarPartida() {
 // Común a todas las fases de una ronda: monta su minijuego (si no lo estaba ya) y pone el reloj.
 function enRonda(msg) {
   $('ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
-  juego.montar(msg.minigame.id, msg.round, jugadoresJuego());
+  juego.montar(msg.minigame.id, msg.round, jugadoresJuego(), msg);
+  juego.actualizar(msg);
   ponerFin(msg.ms);
 }
 
@@ -291,7 +292,6 @@ function alCuenta(msg) {
 
 function alEmpezarRonda(msg) {
   enRonda(msg);
-  juego.actualizar(msg);
   fase('jugando');
   reanimar(escenario.querySelector('.ya'));
 }

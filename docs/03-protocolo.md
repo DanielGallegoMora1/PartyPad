@@ -126,16 +126,18 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 |---|---|---|
 | Instrucciones | `round_intro` | 5 s |
 | Cuenta atrás | `countdown` | 3 s |
-| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms | Lo que diga el minijuego |
+| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto) | Lo que diga el minijuego |
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
 Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar` o `tocar`.
 
+A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la ronda, como el mapa del laberinto, o `null`) y el estado del minijuego. Así puede dibujarlo desde las instrucciones o al recargar a mitad, sin mandar el mapa en cada `state_update`.
+
 | Mensaje | Además, a la pantalla | Además, al mando |
 |---|---|---|
 | `round_start` | El estado inicial del minijuego | |
-| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado) | |
+| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place` | |
 | `round_end` | `last`, `results` (`id`, `place`, `points`) y `ranking` (`id`, `place`, `total`) | `place`, `points`, `total` y `overall` (puesto en la general) |
 | `podium` | `ranking` | `place` y `total` |
 | `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms) |
@@ -162,6 +164,8 @@ function onSensor(x, y) {
 ```
 
 El umbral es un compromiso: más alto ahorra más datos pero el movimiento se nota más "a saltos". Conviene probar varios valores y elegir uno.
+
+En el mando real (`controller/sensores.js`) la inclinación se lee como mucho cada 33 ms y el umbral es de 2 unidades cuantizadas. La agitación se lee cada 50 ms y solo se envía si la intensidad cambia al menos 0,04. En el Laberinto, la postura con la que se empieza cuenta como plana, y el botón «Recalibrar» la vuelve a tomar.
 
 ## Comparativa de tamaños
 

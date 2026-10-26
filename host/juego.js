@@ -2,8 +2,9 @@
 // El juego se crea al empezar la primera ronda y se reutiliza en las siguientes.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { Carrera } from './juegos/carrera.js';
+import { Laberinto } from './juegos/laberinto.js';
 
-const ESCENAS = { carrera: Carrera };
+const ESCENAS = { carrera: Carrera, laberinto: Laberinto };
 
 let juego = null;
 let listo = null; // promesa que se cumple cuando Phaser ha arrancado
@@ -34,14 +35,15 @@ function crear() {
 
 const escena = () => (actual ? juego?.scene.getScene(actual) : null);
 
-// jugadores: [{ id, name, hex, connected }]. Si ya se está jugando esa ronda, no hace nada.
-export async function montar(id, numero, jugadores) {
+// jugadores: [{ id, name, hex, connected }]. inicio: el mensaje de la fase, con el escenario (setup)
+// y el estado del minijuego. Si ya se está jugando esa ronda, no hace nada.
+export async function montar(id, numero, jugadores, inicio) {
   if (!ESCENAS[id] || (actual === id && ronda === numero)) return;
   if (actual && juego) juego.scene.stop(actual);
   actual = id;
   ronda = numero;
   await (listo ?? crear());
-  if (actual === id && ronda === numero) juego.scene.start(id, { jugadores });
+  if (actual === id && ronda === numero) juego.scene.start(id, { jugadores, inicio });
 }
 
 export function desmontar() {

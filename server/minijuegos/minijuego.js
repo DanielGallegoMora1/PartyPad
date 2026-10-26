@@ -15,6 +15,7 @@ export class Minijuego {
   static instrucciones = '';
   static control = ''; // qué muestra el mando: 'agitar', 'inclinar' o 'tocar'
   static duracion = 30_000; // en ms; la ronda termina antes si terminado() lo dice
+  static envio = 100; // ms entre state_update a la pantalla
 
   // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador.
   constructor(ids, { vibrar, avisar }) {
@@ -47,7 +48,12 @@ export class Minijuego {
 
   tick(dt) {}
 
-  // Lo que necesita la pantalla para dibujar la ronda. Se envía unas 10 veces por segundo.
+  // Lo que no cambia en toda la ronda, como el mapa. Se envía a la pantalla al cambiar de fase.
+  escenario() {
+    return null;
+  }
+
+  // Lo que necesita la pantalla para dibujar la ronda. Se envía cada `envio` ms.
   estado() {
     return {};
   }

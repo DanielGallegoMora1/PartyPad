@@ -20,6 +20,8 @@ body[data-vista='partida'] .vista-partida,
 body[data-vista='instrucciones'] .vista-instrucciones,
 body[data-vista='cuenta'] .vista-cuenta,
 body[data-vista='agitar'] .vista-agitar,
+body[data-vista='inclinar'] .vista-inclinar,
+body[data-vista='meta'] .vista-meta,
 body[data-vista='resultados'] .vista-resultados,
 body[data-vista='podio'] .vista-podio,
 body[data-vista='mensaje'] .vista-mensaje {
@@ -256,6 +258,8 @@ legend {
 body[data-vista='instrucciones'] .jugador-partida,
 body[data-vista='cuenta'] .jugador-partida,
 body[data-vista='agitar'] .jugador-partida,
+body[data-vista='inclinar'] .jugador-partida,
+body[data-vista='meta'] .jugador-partida,
 body[data-vista='partida'] .jugador-partida,
 body[data-vista='resultados'] .jugador-partida,
 body[data-vista='podio'] .jugador-partida {
@@ -349,18 +353,48 @@ body[data-vista='podio'] .jugador-partida {
   font-weight: 700;
 }
 
-.en-meta .medidor {
-  border-style: solid;
-  border-color: var(--exito);
+/* Inclinar: un nivel con una bola que va hacia donde se inclina el móvil */
+
+.nivel {
+  position: relative;
+  width: min(75vw, 48vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)) center / 2px 100% no-repeat,
+    linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)) center / 100% 2px no-repeat,
+    radial-gradient(circle, transparent 31%, rgb(255 255 255 / 0.1) 31.5% 32.5%, transparent 33%),
+    var(--fondo-2);
+  border: 4px solid color-mix(in srgb, var(--jugador) 50%, transparent);
+  touch-action: none;
 }
 
-.en-meta .medidor span {
-  transform: scale(1);
-  background: var(--exito);
-  box-shadow: 0 0 3rem rgb(61 220 132 / 0.6);
+.burbuja {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.4), transparent 45%), var(--jugador);
+  box-shadow: 0 0 2rem color-mix(in srgb, var(--jugador) 60%, transparent);
+  transition: left 0.05s linear, top 0.05s linear;
 }
 
-.en-meta .agitar-texto {
+/* Meta */
+
+.vista-meta {
+  text-align: center;
+}
+
+.meta-icono {
+  font-size: 5rem;
+  animation: botar-suave 1.2s ease-in-out infinite;
+}
+
+.vista-meta h1 {
+  font-size: 2.6rem;
   color: var(--exito);
 }
 

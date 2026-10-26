@@ -3,7 +3,7 @@
 // En la partida, cada ronda: instrucciones → cuenta atrás → control del minijuego → resultados. Al final, podio.
 import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
-import { estadoPermiso, medirAgitado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
+import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
 const CLAVE_NOMBRE = 'partypad:nombre'; // para no tener que escribirlo cada vez
@@ -344,7 +344,7 @@ $('salir').addEventListener('click', () => {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹' };
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 let fin = 0; // performance.now() en que acaba la fase actual
 let ultimaCuenta = null;
@@ -405,6 +405,7 @@ function alIntro(msg) {
 const SIN_SENSOR = {
   agitar: 'Sin sensor de movimiento: toca la pantalla muy rápido para avanzar.',
   inclinar: 'Sin sensor de movimiento: arrastra el dedo por el círculo para mover tu bola.',
+  apuntar: 'Sin sensor de movimiento: arrastra el dedo por el recuadro para apuntar.',
 };
 let controlActual = null;
 
@@ -429,6 +430,7 @@ function empezarControl(control) {
   pararMedicion();
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
+  else if (control === 'apuntar') empezarApuntar();
   else empezarToque();
 }
 
@@ -497,8 +499,58 @@ function empezarInclinar() {
 
 $('recalibrar').addEventListener('click', () => medicion?.recalibrar());
 
+// Apuntar: el recuadro muestra dónde está la mirilla en la pantalla grande y, sin giroscopio, hace de touchpad.
+function empezarApuntar() {
+  const mira = $('mira');
+  medicion = medirApuntado({
+    alCambiar(x, y) {
+      $('punto-mira').style.left = `${50 + x * 50}%`;
+      $('punto-mira').style.top = `${50 + y * 50}%`;
+      $('apuntar-pista').textContent = medicion?.hayGiroscopio()
+        ? 'Apunta con el móvil a la pantalla. Si se desvía, pulsa Centrar mirando al centro'
+        : 'Arrastra el dedo por el recuadro para apuntar';
+    },
+    alEnviar(x, y) {
+      enviarBinario(encodeTilt(yo.id, x, y));
+    },
+  });
+  let anterior = null;
+  mira.onpointerdown = (e) => {
+    mira.setPointerCapture?.(e.pointerId);
+    anterior = { x: e.clientX, y: e.clientY };
+  };
+  mira.onpointermove = (e) => {
+    if (!anterior) return;
+    const r = mira.getBoundingClientRect();
+    medicion?.mover(((e.clientX - anterior.x) / r.width) * 2, ((e.clientY - anterior.y) / r.height) * 2);
+    anterior = { x: e.clientX, y: e.clientY };
+  };
+  mira.onpointerup = mira.onpointercancel = () => (anterior = null);
+  mostrar('apuntar');
+}
+
+$('centrar').addEventListener('click', () => medicion?.recalibrar());
+
+const disparar = $('disparar');
+disparar.addEventListener('pointerdown', (e) => {
+  disparar.setPointerCapture?.(e.pointerId);
+  disparar.classList.add('pulsado');
+  if (yo) enviarBinario(encodeButton(yo.id, 0, true));
+});
+for (const tipo of ['pointerup', 'pointercancel']) {
+  disparar.addEventListener(tipo, () => {
+    if (!disparar.classList.contains('pulsado')) return;
+    disparar.classList.remove('pulsado');
+    if (yo) enviarBinario(encodeButton(yo.id, 0, false));
+  });
+}
+disparar.addEventListener('contextmenu', (e) => e.preventDefault());
+
 function pararMedicion() {
   medicion?.parar();
+  // Para el estudio de compresión: lecturas tomadas frente a mensajes enviados (compresión delta).
+  const { tomadas, enviadas } = medicion?.estadisticas() ?? {};
+  if (tomadas) enviar({ type: 'input_stats', samples: tomadas, sent: enviadas });
   medicion = null;
 }
 
@@ -564,3 +616,6 @@ boton.addEventListener('contextmenu', (e) => e.preventDefault());
 
 crearPaleta();
 conectar();
+
+// PWA: el Service Worker guarda el mando en caché para que cargue al instante (solo con HTTPS o en localhost).
+navigator.serviceWorker?.register('/mando/sw.js', { scope: '/mando/' }).catch(() => {});

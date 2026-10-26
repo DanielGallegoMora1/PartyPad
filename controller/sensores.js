@@ -43,10 +43,25 @@ export async function pedirPermiso() {
   return permiso;
 }
 
+// Para medir la compresión delta: cuántas lecturas se toman y cuántas se envían de verdad.
+function contador(alEnviar) {
+  let tomadas = 0;
+  let enviadas = 0;
+  return {
+    muestra: () => tomadas++,
+    enviar(...valores) {
+      enviadas++;
+      alEnviar(...valores);
+    },
+    estadisticas: () => ({ tomadas, enviadas }),
+  };
+}
+
 // Agitar. alCambiar(nivel) para pintar el medidor; alEnviar(nivel) cuando hay que mandarlo al servidor.
 export function medirAgitado({ alCambiar, alEnviar }) {
   let nivel = 0;
   let enviado = 0;
+  const cuenta = contador(alEnviar);
   let ultimaLectura = 0;
   let anterior = performance.now();
 
@@ -77,9 +92,10 @@ export function medirAgitado({ alCambiar, alEnviar }) {
   const intervalo = setInterval(() => {
     bajar(performance.now());
     alCambiar(nivel);
+    cuenta.muestra();
     if (Math.abs(nivel - enviado) >= UMBRAL || (nivel === 0 && enviado !== 0)) {
       enviado = nivel;
-      alEnviar(nivel);
+      cuenta.enviar(nivel);
     }
   }, ENVIO);
 
@@ -88,10 +104,11 @@ export function medirAgitado({ alCambiar, alEnviar }) {
   return {
     tocar,
     hayAcelerometro,
+    estadisticas: cuenta.estadisticas,
     parar() {
       clearInterval(intervalo);
       window.removeEventListener('devicemotion', alMoverse);
-      if (enviado !== 0) alEnviar(0);
+      if (enviado !== 0) cuenta.enviar(0);
     },
   };
 }
@@ -146,6 +163,7 @@ export function medirInclinacion({ alCambiar, alEnviar }) {
   let enviado = { x: 0, y: 0 }; // cuantizado
   let ultimaLectura = 0;
   const escala = Math.sin(GRADOS_MAX * RAD);
+  const cuenta = contador(alEnviar);
 
   function alOrientar(e) {
     if (e.beta == null || e.gamma == null) return;
@@ -165,11 +183,12 @@ export function medirInclinacion({ alCambiar, alEnviar }) {
 
   const intervalo = setInterval(() => {
     alCambiar(x, y);
+    cuenta.muestra();
     const qx = cuantizar(x);
     const qy = cuantizar(y);
     if (Math.abs(qx - enviado.x) >= UMBRAL_INCLINACION || Math.abs(qy - enviado.y) >= UMBRAL_INCLINACION) {
       enviado = { x: qx, y: qy };
-      alEnviar(x, y);
+      cuenta.enviar(x, y);
     }
   }, ENVIO_INCLINACION);
 
@@ -177,6 +196,7 @@ export function medirInclinacion({ alCambiar, alEnviar }) {
 
   return {
     hayGiroscopio,
+    estadisticas: cuenta.estadisticas,
     // Sin giroscopio, el dedo hace de joystick: dx y dy entre -1 y 1 desde el centro.
     arrastrar(dx, dy) {
       if (hayGiroscopio()) return;
@@ -191,7 +211,65 @@ export function medirInclinacion({ alCambiar, alEnviar }) {
     parar() {
       clearInterval(intervalo);
       window.removeEventListener('deviceorientation', alOrientar);
-      if (enviado.x || enviado.y) alEnviar(0, 0);
+      if (enviado.x || enviado.y) cuenta.enviar(0, 0);
+    },
+  };
+}
+
+const GRADOS_APUNTAR_X = 30; // giro a izquierda o derecha que lleva la mirilla al borde de la pantalla
+const GRADOS_APUNTAR_Y = 20; // y arriba o abajo
+const UMBRAL_APUNTAR = 1; // la puntería necesita más precisión que la inclinación
+
+// Apuntar: el móvil como un mando de la tele. x e y entre -1 y 1, 0 en el centro. Girar el móvil a los lados
+// (alpha) mueve la mirilla en horizontal y levantar o bajar la punta (beta), en vertical. La postura con la que se
+// empieza apunta al centro. Sin giroscopio, el dedo hace de ratón: mover(dx, dy) desplaza la mirilla.
+export function medirApuntado({ alCambiar, alEnviar }) {
+  let x = 0;
+  let y = 0;
+  let neutro = null;
+  let enviado = { x: 0, y: 0 }; // cuantizado
+  let ultimaLectura = 0;
+  const cuenta = contador(alEnviar);
+
+  function alOrientar(e) {
+    if (e.alpha == null || e.beta == null) return;
+    ultimaLectura = performance.now();
+    neutro ??= { alpha: e.alpha, beta: e.beta };
+    const giro = ((e.alpha - neutro.alpha + 540) % 360) - 180; // de -180 a 180, sin saltos al pasar por 0
+    x = limitar(-giro / GRADOS_APUNTAR_X);
+    y = limitar(-(e.beta - neutro.beta) / GRADOS_APUNTAR_Y);
+  }
+
+  const hayGiroscopio = () => performance.now() - ultimaLectura < SIN_SENSOR;
+
+  const intervalo = setInterval(() => {
+    alCambiar(x, y);
+    cuenta.muestra();
+    const qx = cuantizar(x);
+    const qy = cuantizar(y);
+    if (Math.abs(qx - enviado.x) >= UMBRAL_APUNTAR || Math.abs(qy - enviado.y) >= UMBRAL_APUNTAR) {
+      enviado = { x: qx, y: qy };
+      cuenta.enviar(x, y);
+    }
+  }, ENVIO_INCLINACION);
+
+  window.addEventListener('deviceorientation', alOrientar);
+
+  return {
+    hayGiroscopio,
+    estadisticas: cuenta.estadisticas,
+    mover(dx, dy) {
+      if (hayGiroscopio()) return;
+      x = limitar(x + dx);
+      y = limitar(y + dy);
+    },
+    recalibrar() {
+      neutro = null;
+      if (!hayGiroscopio()) x = y = 0;
+    },
+    parar() {
+      clearInterval(intervalo);
+      window.removeEventListener('deviceorientation', alOrientar);
     },
   };
 }

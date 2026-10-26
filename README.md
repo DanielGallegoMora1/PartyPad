@@ -105,10 +105,31 @@ Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad
 | `http://localhost:3000/` | Pantalla principal (`host/`) |
 | `http://localhost:3000/mando` | Mando del móvil (`controller/`) |
 | `/shared/…` | Código común (`shared/`) |
-| `/packs/manifest.json` | Manifest de packs (`packs/`) |
-| `/lib/phaser/…` | Phaser, desde `node_modules/phaser/dist` |
+| `/packs/manifest.json` | Manifest de los packs publicados, que el servidor genera a partir de `packs/` |
+| `/packs/<id>-<versión>.zip` | El ZIP de cada pack |
+| `/lib/phaser/…` y `/lib/fflate/…` | Phaser y fflate (para descomprimir los packs), desde `node_modules` |
+| `/medidas` | Mediciones de red de cada ronda: compresión y latencia (ver [03 · Protocolo](docs/03-protocolo.md#cómo-se-mide)) |
+| `/api/medidas.csv` | Las mismas mediciones en CSV |
+
+`npm run medir` juega partidas con 2, 4 y 8 bots contra un servidor propio y deja las tablas de compresión en [`docs/mediciones/bots.md`](docs/mediciones/bots.md), listas para la memoria.
 
 El puerto se cambia con la variable de entorno `PORT`.
+
+### El mando como PWA
+
+El mando se puede instalar en el móvil («Añadir a pantalla de inicio») y se abre como una app. Su Service Worker ([`controller/sw.js`](controller/sw.js)) guarda en caché los archivos del mando con un número de versión que calcula el servidor (un hash de esos archivos): al cambiar cualquiera, los móviles descargan la versión nueva y borran la anterior. Con `NODE_ENV=production` (el despliegue) el mando se sirve primero de la caché y carga al instante; en desarrollo va primero a la red, para ver cada cambio al recargar. Solo funciona con HTTPS o en `localhost`.
+
+### Packs descargables
+
+Cada carpeta de [`packs/`](packs) con un `pack.json` es un minijuego descargable (ver [02 · Sistema de packs](docs/02-arquitectura.md#sistema-de-packs-descarga-y-actualización)). **Apunta y dispara** arranca sin publicar, para poder publicarlo en directo con el servidor en marcha:
+
+```bash
+npm run publicar -- apunta                       # en http://localhost:3000
+npm run publicar -- apunta --retirar
+npm run publicar -- apunta --url https://partypad.onrender.com --token <ADMIN_TOKEN>
+```
+
+Las pantallas abiertas lo descargan al momento, comprueban su SHA-256, lo guardan en IndexedDB (no se vuelve a descargar al recargar) y lo añaden a la partida. Para que salga publicado siempre, se pone `"publicado": true` en su `pack.json`.
 
 ## Despliegue en la nube
 
@@ -119,6 +140,8 @@ Para la demo y para probar en la red de la universidad conviene tenerlo desplega
 1. Entrar en [render.com](https://render.com) con la cuenta de GitHub.
 2. *New → Blueprint* y elegir este repositorio. Render lee [`render.yaml`](render.yaml) y crea el servicio `partypad`.
 3. Al terminar, la pantalla está en `https://partypad.onrender.com` (o el nombre que asigne Render) y el mando en `/mando`. Cada push a `main` se despliega solo.
+
+Render genera un `ADMIN_TOKEN` (se ve en *Environment* del servicio): es el que pide `npm run publicar` para publicar packs en el despliegue.
 
 En el plan gratuito, el servidor se duerme tras 15 minutos sin uso y tarda alrededor de un minuto en despertar: antes de la demo hay que abrir la pantalla con tiempo. Las salas viven en memoria, así que un despliegue nuevo las cierra.
 

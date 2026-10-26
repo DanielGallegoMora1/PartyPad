@@ -1,7 +1,8 @@
 // Partida de una sala: las rondas de minijuegos, sus fases y las puntuaciones (ver docs/02-arquitectura.md).
 // Fases de cada ronda: instrucciones → cuenta → jugando → resultados. Tras la última ronda, podio.
-import { MINIJUEGOS } from './minijuegos/index.js';
+import { minijuegosPartida } from './minijuegos/index.js';
 import { conPuestos } from './minijuegos/minijuego.js';
+import { Medicion, medirLatencia } from './medidas.js';
 
 const T_INSTRUCCIONES = 5000;
 const T_CUENTA = 3000;
@@ -12,7 +13,7 @@ const PUNTOS = [10, 8, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda
 export class Partida {
   constructor(sala) {
     this.sala = sala;
-    this.rondas = MINIJUEGOS;
+    this.rondas = minijuegosPartida(sala.packs);
     this.ronda = -1;
     this.fase = null; // instrucciones | cuenta | jugando | resultados | podio
     this.finFase = 0;
@@ -21,6 +22,8 @@ export class Partida {
     this.resultados = []; // [{ id, place, points }] de la última ronda
     this.timer = null;
     this.intervalo = null;
+    this.medicion = null; // tráfico de la ronda en juego, o de la última (ver medidas.js)
+    this.pings = null;
   }
 
   empezar() {
@@ -33,6 +36,8 @@ export class Partida {
   parar() {
     clearTimeout(this.timer);
     clearInterval(this.intervalo);
+    clearInterval(this.pings);
+    this.medicion?.cerrar();
   }
 
   siguienteRonda() {
@@ -58,6 +63,9 @@ export class Partida {
 
   jugar() {
     this.cambiarFase('jugando');
+    const { id, control } = this.juego.constructor;
+    this.medicion = new Medicion({ sala: this.sala.code, minijuego: id, control, jugadores: this.puntos.size });
+    this.pings = medirLatencia(() => [...this.sala.jugadores.values()].map((j) => j.socket));
     let anterior = Date.now();
     let ultimoEnvio = 0;
     const { envio } = this.juego.constructor; // ms entre state_update a la pantalla
@@ -70,7 +78,7 @@ export class Partida {
       if (ahora - ultimoEnvio >= envio || this.juego.enviarAhora) {
         ultimoEnvio = ahora;
         this.juego.enviarAhora = false;
-        this.sala.aPantalla(this.estado());
+        this.enviarEstado();
       }
     }, TICK);
   }
@@ -79,9 +87,17 @@ export class Partida {
     return { type: 'state_update', ms: Math.round(this.juego.restante * 1000), ...this.juego.estado() };
   }
 
+  enviarEstado() {
+    const msg = this.estado();
+    this.medicion?.estado(msg);
+    this.sala.aPantalla(msg);
+  }
+
   terminarRonda() {
     clearInterval(this.intervalo);
-    this.sala.aPantalla(this.estado());
+    clearInterval(this.pings);
+    this.enviarEstado();
+    this.medicion.cerrar();
     this.resultados = this.juego
       .getResults()
       .filter((r) => this.puntos.has(r.id))
@@ -137,8 +153,11 @@ export class Partida {
     if (puesto) this.sala.aJugador(j.id, { type: 'finished', place: puesto });
   }
 
-  entrada(id, entrada) {
-    if (this.fase === 'jugando') this.juego.onInput(id, entrada);
+  // bytes: tamaño del mensaje binario, para las mediciones.
+  entrada(id, entrada, bytes) {
+    if (this.fase !== 'jugando') return;
+    this.juego.onInput(id, entrada);
+    this.medicion?.entrada(id, bytes, entrada);
   }
 
   conectado(j) {

@@ -3,6 +3,8 @@
 import { WebSocketServer } from 'ws';
 import { MSG } from '../shared/protocol.js';
 import { buscarSala, crearSala, enviar } from './salas.js';
+import { rttDePong } from './medidas.js';
+import { alCambiarPacks } from './packs.js';
 
 // Cada LATIDO ms se manda un ping a todas las conexiones; la que no ha contestado al anterior se da por perdida.
 // Así se detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue
@@ -19,6 +21,7 @@ function mensajePantalla(socket, msg) {
       const nueva = crearSala();
       nueva.conectarPantalla(socket);
       enviar(socket, { type: 'room_created', code: nueva.code, token: nueva.hostToken });
+      nueva.avisarMinijuegos();
       return;
     }
     case 'resume_room': {
@@ -29,6 +32,7 @@ function mensajePantalla(socket, msg) {
       }
       encontrada.conectarPantalla(socket);
       enviar(socket, { type: 'room_resumed', code: encontrada.code, state: encontrada.state, players: encontrada.lista });
+      encontrada.avisarMinijuegos();
       encontrada.partida?.avisarPantalla();
       return;
     }
@@ -40,6 +44,8 @@ function mensajePantalla(socket, msg) {
       return sala?.quitar(msg.id, 'kicked');
     case 'close_room':
       return sala?.cerrar();
+    case 'packs_installed':
+      return sala?.ponerPacks(msg.ids);
   }
 }
 
@@ -81,6 +87,8 @@ function mensajeMando(socket, msg) {
     }
     case 'leave_room':
       return socket.jugador && socket.sala.quitar(socket.jugador.id);
+    case 'input_stats':
+      return socket.jugador && socket.sala.partida?.medicion?.estadisticasMando(msg.samples, msg.sent);
   }
 }
 
@@ -102,11 +110,16 @@ export function attachWebSocket(server) {
       socket.close(4000, 'Falta ?rol=pantalla o ?rol=mando');
       return;
     }
+    socket.rol = rol;
     socket.sala = null;
     socket.jugador = null;
     socket.observando = null;
     socket.vivo = true;
-    socket.on('pong', () => (socket.vivo = true));
+    socket.on('pong', (datos) => {
+      socket.vivo = true;
+      const rtt = rttDePong(datos); // los pings de medida llevan la hora a la que salieron
+      if (rtt !== null) socket.sala?.partida?.medicion?.rtt(rtt);
+    });
 
     socket.on('message', (data, isBinary) => {
       if (isBinary) {
@@ -132,6 +145,11 @@ export function attachWebSocket(server) {
         socket.observando?.dejarDeObservar(socket);
       }
     });
+  });
+
+  // Cuando hay un pack nuevo o actualizado, todas las pantallas lo descargan.
+  alCambiarPacks(({ version }) => {
+    for (const s of wss.clients) if (s.rol === 'pantalla') enviar(s, { type: 'packs_updated', version });
   });
 
   const latido = setInterval(() => {

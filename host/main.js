@@ -2,6 +2,7 @@
 // La partida la lleva el servidor; aquí se muestran sus fases y el minijuego se dibuja con Phaser (juego.js).
 import { COLORES } from '/shared/colores.js';
 import * as juego from './juego.js';
+import { sincronizar } from './packs.js';
 
 const MAX_JUGADORES = 8;
 const MIN_JUGADORES = 2;
@@ -12,6 +13,8 @@ const $ = (id) => document.getElementById(id);
 let socket = null;
 let codigo = null;
 let jugadores = new Map(); // id → { id, name, color, connected }
+let packsListos = []; // ids de los packs descargados y cargados
+let minijuegos = []; // los de la próxima partida, según el servidor
 
 // Almacenamiento: si el navegador no lo permite, simplemente no se recupera la sala al recargar.
 const sesion = {
@@ -88,9 +91,18 @@ function alRecibir(msg) {
     case 'room_created':
       sesion.guardar({ code: msg.code, token: msg.token });
       entrarEnSala(msg.code, 'lobby', []);
+      enviar({ type: 'packs_installed', ids: packsListos });
       break;
     case 'room_resumed':
       entrarEnSala(msg.code, msg.state, msg.players);
+      enviar({ type: 'packs_installed', ids: packsListos });
+      break;
+    case 'minigames':
+      minijuegos = msg.list;
+      pintarMinijuegos();
+      break;
+    case 'packs_updated':
+      actualizarPacks();
       break;
     case 'resume_error':
       sesion.borrar();
@@ -147,6 +159,43 @@ function alRecibir(msg) {
       mostrar('inicio');
       break;
   }
+}
+
+// Packs descargables
+
+const nuevos = new Set(); // packs descargados en esta visita, para marcarlos en el lobby
+
+async function actualizarPacks() {
+  try {
+    const listos = await sincronizar((id, estado, p) => {
+      if (estado === 'descargando') avisar(`📦 Descargando ${p.name}…`, 0);
+      else if (estado === 'nuevo') avisar(`📦 ¡Nuevo minijuego descargado: ${p.name}!`, 6000);
+      else if (estado === 'actualizado') avisar(`📦 ${p.name} actualizado a la versión ${p.version}`, 6000);
+      else if (estado === 'error') avisar(`No se ha podido descargar ${p.name}`, 6000);
+      if (estado === 'nuevo' || estado === 'actualizado') nuevos.add(id);
+    });
+    for (const p of listos) await juego.registrar(p.id, p.Escena);
+    packsListos = listos.map((p) => p.id);
+  } catch (err) {
+    console.warn('No se han podido sincronizar los packs:', err);
+  }
+  enviar({ type: 'packs_installed', ids: packsListos });
+}
+
+function pintarMinijuegos() {
+  $('minijuegos').replaceChildren(
+    ...minijuegos.map((m) => {
+      const li = document.createElement('li');
+      li.className = 'chip';
+      li.textContent = `${ICONOS[m.control] ?? '🎮'} ${m.name}`;
+      if (packsListos.includes(m.id)) {
+        const marca = Object.assign(document.createElement('span'), { className: 'marca', textContent: nuevos.has(m.id) ? 'Nuevo' : 'Pack' });
+        li.append(marca);
+        li.classList.toggle('nuevo', nuevos.has(m.id));
+      }
+      return li;
+    }),
+  );
 }
 
 // Sala y lobby
@@ -227,7 +276,7 @@ function pintarLobby() {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹' };
 let fin = 0; // performance.now() en que acaba la fase actual, para los relojes
 let ultimaCuenta = null;
 
@@ -382,3 +431,4 @@ dialogoCerrar.addEventListener('close', () => {
 });
 
 conectar();
+actualizarPacks();

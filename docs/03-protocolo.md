@@ -84,6 +84,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `back_to_lobby` | | Vuelve al lobby |
 | `kick` | `id` | Expulsa a un jugador |
 | `close_room` | | Cierra la sala |
+| `packs_installed` | `ids` | Los packs que la pantalla ya ha descargado; solo esos entran en su partida |
 
 **Servidor → pantalla**
 
@@ -95,6 +96,8 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `player_joined` | `player` (`id`, `name`, `color`, `connected`) | Entra un jugador |
 | `player_status` | `id`, `connected` | Un jugador se desconecta o vuelve |
 | `player_left` | `id` | Un jugador sale, es expulsado o no vuelve a tiempo |
+| `minigames` | `list` (`id`, `name`, `instructions`, `control`) | Al crear o recuperar la sala y tras `packs_installed`: los minijuegos de la partida |
+| `packs_updated` | `version` | Hay un pack nuevo o actualizado en el manifest: la pantalla vuelve a sincronizar |
 
 **Mando → servidor**
 
@@ -104,6 +107,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `join_room` | `code`, `name`, `color` | Se une. El nombre tiene como máximo 16 caracteres y el color es un índice de `shared/colores.js` |
 | `rejoin` | `code`, `token` | Vuelve con el token guardado en el móvil |
 | `leave_room` | | Sale de la sala |
+| `input_stats` | `samples`, `sent` | Al dejar de leer el sensor: lecturas tomadas y mensajes enviados, para medir la compresión delta |
 
 **Servidor → mando**
 
@@ -126,18 +130,18 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 |---|---|---|
 | Instrucciones | `round_intro` | 5 s |
 | Cuenta atrás | `countdown` | 3 s |
-| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto y en Reflejos) | Lo que diga el minijuego |
+| Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto; en Reflejos, en cuanto cambia algo y si no cada segundo) | Lo que diga el minijuego |
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
-Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar` o `tocar`.
+Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar` o `apuntar`. En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
 
 A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la ronda, como el mapa del laberinto, o `null`) y el estado del minijuego. Así puede dibujarlo desde las instrucciones o al recargar a mitad, sin mandar el mapa en cada `state_update`.
 
 | Mensaje | Además, a la pantalla | Además, al mando |
 |---|---|---|
 | `round_start` | El estado inicial del minijuego | |
-| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place`. En Reflejos: `phase` (`preparados`, `espera`, `ya` o `pausa`), `signal` (de 1 a `signals`), `signals`, `winner` (el más rápido de la última señal, o `null`) y `players` con `id`, `ms` (tiempo en la señal actual o `null`), `early`, `missed` y `total` (ms acumulados) | |
+| `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place`. En Reflejos: `phase` (`preparados`, `espera`, `ya` o `pausa`), `signal` (de 1 a `signals`), `signals`, `winner` (el más rápido de la última señal, o `null`) y `players` con `id`, `ms` (tiempo en la señal actual o `null`), `early`, `missed` y `total` (ms acumulados). En Apunta y dispara: `players` con `id`, `x`, `y` (la mirilla, con el campo de `setup.width` × 1) y `score`; `targets` con `n`, `x`, `y`, `r`, `gold` y `life` (de 1 a 0); y `shots`, los disparos del último medio segundo, con `n`, `id`, `x`, `y`, `diana` (la acertada o `null`) y `puntos` | |
 | `round_end` | `last`, `results` (`id`, `place`, `points`) y `ranking` (`id`, `place`, `total`) | `place`, `points`, `total` y `overall` (puesto en la general) |
 | `podium` | `ranking` | `place` y `total` |
 | `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms), y otra vez si se reconecta después de llegar |
@@ -200,3 +204,19 @@ Esta tabla es el corazón del apartado de compresión. Rellenadla con datos real
 4. **Tamaño de cada pack** con los distintos formatos de imagen y audio.
 
 Una gráfica de barras de las mediciones del punto 1 queda muy bien tanto en la memoria como en la presentación.
+
+### Cómo se mide
+
+El servidor mide cada ronda él solo (`server/medidas.js`); no hay que activar nada:
+
+| Qué | Cómo |
+|---|---|
+| Subida en binario | Los bytes reales de cada mensaje binario de los mandos, más la cabecera de WebSocket (2 bytes y 4 de máscara) |
+| Subida en JSON y MessagePack | Cada entrada recibida se vuelve a codificar en JSON y en MessagePack (`@msgpack/msgpack`) con los mismos campos y los decimales redondeados a 4 cifras, y se suma su tamaño con su cabecera |
+| Compresión delta | Al acabar cada ronda, el mando manda `input_stats` (`samples`: lecturas del sensor tomadas; `sent`: mensajes enviados). «Binario sin delta» es el binario enviado más un mensaje (con su cabecera) por cada lectura que no se envió |
+| Bajada a la pantalla | Cada `state_update` en JSON (lo real) y en MessagePack; comprimido con deflate mensaje a mensaje y con un único flujo deflate para toda la ronda, que es lo que haría permessage-deflate |
+| Latencia (RNF1) | Durante la ronda, el servidor manda a cada mando un ping de WebSocket cada 2 s con la hora dentro; el pong la devuelve y se calcula la ida y vuelta (RTT). La ida es más o menos la mitad |
+
+Los resultados se ven en **`/medidas`** (cifras, gráficas de barras y la tabla de rondas, con descarga en CSV en `/api/medidas.csv`). Se guardan en memoria las últimas 200 rondas, así que hay que descargar el CSV antes de reiniciar el servidor.
+
+Para tener tablas comparables sin depender de cuántos móviles haya, `npm run medir` juega partidas con 2, 4 y 8 bots (y 8 bots casi quietos) contra un servidor propio y escribe [`docs/mediciones/bots.md`](mediciones/bots.md). Las mediciones con personas (latencia real y cuánto ahorra la compresión delta con un móvil en la mano) salen de jugar con móviles y mirar `/medidas`.

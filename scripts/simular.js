@@ -174,13 +174,27 @@ class Bot {
     }
   }
 
+  // Como el mando real: al dejar de leer el sensor cuenta cuántas lecturas tomó y cuántas envió.
   parar() {
     clearInterval(this.timer);
     this.timer = null;
+    if (this.muestras?.tomadas) {
+      json(this.s, { type: 'input_stats', samples: this.muestras.tomadas, sent: this.muestras.enviadas });
+    }
+    this.muestras = null;
+  }
+
+  // Una lectura del sensor; si hay que enviarla, datos es el mensaje.
+  muestra(datos) {
+    this.muestras.tomadas++;
+    if (!datos) return;
+    this.muestras.enviadas++;
+    this.binario(datos);
   }
 
   empezar(control) {
     this.parar();
+    this.muestras = { tomadas: 0, enviadas: 0 };
     if (control === 'agitar') this.agitar();
     else if (control === 'inclinar') this.inclinar();
     else if (control === 'tocar') this.tocar();
@@ -193,7 +207,9 @@ class Bot {
       const nivel = QUIETO ? 0 : Math.max(0, Math.min(1, fuerza + (Math.random() - 0.5) * 0.3));
       if (Math.abs(nivel - enviado) >= 0.04) {
         enviado = nivel;
-        this.binario(encodeShake(this.id, nivel));
+        this.muestra(encodeShake(this.id, nivel));
+      } else {
+        this.muestra(null);
       }
     }, 50);
   }
@@ -217,7 +233,9 @@ class Bot {
       const q = { x: Math.round(x * 127), y: Math.round(y * 127) };
       if (Math.abs(q.x - enviado.x) >= 2 || Math.abs(q.y - enviado.y) >= 2) {
         enviado = q;
-        this.binario(encodeTilt(this.id, x, y));
+        this.muestra(encodeTilt(this.id, x, y));
+      } else {
+        this.muestra(null);
       }
     }, 33);
   }
@@ -323,6 +341,31 @@ for (let p = 0; p < PARTIDAS; p++) {
   log(`Partida ${p + 1} en ${segundos.toFixed(1)} s · ${enviados} mensajes binarios de los mandos, ${bytes} B`);
   log(`Vibraciones recibidas: ${bots.map((b) => b.vibraciones).join(', ')}`);
   log(`Adelantos a propósito: ${bots.map((b) => b.adelantos ?? 0).join(', ')}`);
+}
+
+// Lo que ha medido el servidor en cada ronda (ver server/medidas.js).
+const medidas = await fetch(`${URL_WS.replace(/^ws/, 'http')}/api/medidas?sala=${host.code}`)
+  .then((r) => r.json())
+  .catch(() => []);
+if (medidas.length) {
+  console.log('\nMediciones (bytes por segundo, contando las cabeceras de WebSocket en la subida):');
+  console.table(
+    medidas.map((m) => ({
+      minijuego: m.minijuego,
+      jugadores: m.jugadores,
+      segundos: m.segundos,
+      'msg/s': m.subida.mensajesPorSegundo,
+      'JSON': m.subida.bytesPorSegundo.json,
+      'MsgPack': m.subida.bytesPorSegundo.msgpack,
+      'bin sin delta': m.subida.bytesPorSegundo.binarioSinDelta ?? '-',
+      'bin': m.subida.bytesPorSegundo.binario,
+      'ahorro delta %': m.muestras.ahorroDelta ?? '-',
+      'pantalla JSON': m.bajada.bytesPorSegundo.json,
+      'pantalla MsgPack': m.bajada.bytesPorSegundo.msgpack,
+      'pantalla deflate': m.bajada.bytesPorSegundo.deflateContexto,
+      'RTT ms': m.rtt.media ?? '-',
+    })),
+  );
 }
 
 if (vista.problemas.length) {

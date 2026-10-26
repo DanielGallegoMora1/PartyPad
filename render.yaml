@@ -14,3 +14,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # En producción el mando (PWA) se sirve primero de la caché del Service Worker
+      - key: NODE_ENV
+        value: production
+      # Para publicar packs en directo con npm run publicar -- <id> --url … --token …
+      - key: ADMIN_TOKEN
+        generateValue: true

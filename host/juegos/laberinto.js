@@ -60,12 +60,13 @@ export class Laberinto extends Phaser.Scene {
     const { width, height } = this.scale;
     const { cols, rows } = this.mapa;
     const margen = Math.max(24, Math.min(width, height) * 0.05);
+    const reloj = 64; // hueco arriba para el reloj de la ronda, que va encima del canvas
     this.columnaLlegadas = Math.min(width * 0.12, 170);
-    this.celda = Math.min((width - 2 * margen - this.columnaLlegadas) / cols, (height - 2 * margen) / rows);
+    this.celda = Math.min((width - 2 * margen - this.columnaLlegadas) / cols, (height - reloj - 2 * margen) / rows);
     const ancho = cols * this.celda;
     const alto = rows * this.celda;
     this.ox = (width - this.columnaLlegadas - ancho) / 2;
-    this.oy = (height - alto) / 2;
+    this.oy = reloj + (height - reloj - alto) / 2;
 
     this.tablero(ancho, alto);
     this.meta();

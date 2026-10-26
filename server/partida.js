@@ -130,6 +130,9 @@ export class Partida {
       Object.assign(msg, { place: r?.place, points: r?.points ?? 0, total: general.total, overall: general.place });
     }
     this.sala.aJugador(j.id, msg);
+    // Si se reconecta tras llegar a la meta, que vea su puesto y no el control otra vez.
+    const puesto = this.fase === 'jugando' && this.juego.puesto(j.id);
+    if (puesto) this.sala.aJugador(j.id, { type: 'finished', place: puesto });
   }
 
   entrada(id, entrada) {

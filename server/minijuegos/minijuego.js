@@ -58,6 +58,11 @@ export class Minijuego {
     return {};
   }
 
+  // Puesto con el que ya ha terminado la ronda, o 0 si sigue jugando.
+  puesto(id) {
+    return 0;
+  }
+
   conectado(id) {}
   desconectado(id) {}
   quitar(id) {}

@@ -4,6 +4,11 @@ import { WebSocketServer } from 'ws';
 import { MSG } from '../shared/protocol.js';
 import { buscarSala, crearSala, enviar } from './salas.js';
 
+// Cada LATIDO ms se manda un ping a todas las conexiones; la que no ha contestado al anterior se da por perdida.
+// Así se detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue
+// no cortan las conexiones que pasan un rato sin mensajes (por ejemplo, un mando esperando en el lobby).
+const LATIDO = 15_000;
+
 const noExiste = (code) => ({ type: 'room_info', code, exists: false });
 
 function mensajePantalla(socket, msg) {
@@ -100,6 +105,8 @@ export function attachWebSocket(server) {
     socket.sala = null;
     socket.jugador = null;
     socket.observando = null;
+    socket.vivo = true;
+    socket.on('pong', () => (socket.vivo = true));
 
     socket.on('message', (data, isBinary) => {
       if (isBinary) {
@@ -126,6 +133,18 @@ export function attachWebSocket(server) {
       }
     });
   });
+
+  const latido = setInterval(() => {
+    for (const socket of wss.clients) {
+      if (!socket.vivo) {
+        socket.terminate();
+        continue;
+      }
+      socket.vivo = false;
+      socket.ping();
+    }
+  }, LATIDO);
+  wss.on('close', () => clearInterval(latido));
 
   return wss;
 }

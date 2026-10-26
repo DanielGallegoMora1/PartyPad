@@ -265,6 +265,10 @@ export class Laberinto extends Minijuego {
     return { players: [...this.bolas].map(([id, b]) => ({ id, x: r(b.x), y: r(b.y), place: b.puesto })) };
   }
 
+  puesto(id) {
+    return this.bolas.get(id)?.puesto ?? 0;
+  }
+
   conectado(id) {
     const b = this.bolas.get(id);
     if (b) b.conectado = true;

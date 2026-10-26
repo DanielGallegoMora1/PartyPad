@@ -55,6 +55,10 @@ export class Carrera extends Minijuego {
     };
   }
 
+  puesto(id) {
+    return this.corredores.get(id)?.puesto ?? 0;
+  }
+
   conectado(id) {
     const c = this.corredores.get(id);
     if (c) c.conectado = true;

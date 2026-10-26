@@ -1,0 +1,16 @@
+# Despliegue en Render (https://render.com) como Blueprint: New → Blueprint → este repositorio.
+# Render da HTTPS y una URL fija (https://<nombre>.onrender.com) y admite WebSockets.
+# No hace falta PUBLIC_URL: el servidor arma la URL del QR con la dirección con la que se abre la pantalla.
+services:
+  - type: web
+    name: partypad
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /salud
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

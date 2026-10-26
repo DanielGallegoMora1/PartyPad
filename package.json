@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/tunel.js --watch",
-    "local": "node --watch server/index.js"
+    "local": "node --watch server/index.js",
+    "simular": "node scripts/simular.js"
   },
   "engines": {
     "node": ">=20"

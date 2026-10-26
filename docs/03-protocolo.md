@@ -140,11 +140,11 @@ A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la
 | `state_update` | `ms` y el estado del minijuego. En la Carrera de agitar: `players` con `id`, `progress` (0 a 1), `intensity` y `place` (0 si aún no ha llegado). En el Laberinto: `players` con `id`, `x`, `y` (en celdas) y `place` | |
 | `round_end` | `last`, `results` (`id`, `place`, `points`) y `ranking` (`id`, `place`, `total`) | `place`, `points`, `total` y `overall` (puesto en la general) |
 | `podium` | `ranking` | `place` y `total` |
-| `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms) |
+| `finished` | | `place`, al llegar a la meta (junto con un VIBRATE de 300 ms), y otra vez si se reconecta después de llegar |
 
 Los puntos por puesto en cada ronda son 10, 8, 6, 5, 4, 3, 2 y 1. Los empatados comparten puesto y puntos.
 
-**Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos.
+**Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos. El servidor manda un ping de WebSocket a cada conexión cada 15 segundos y cierra la que no ha contestado al anterior: así detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue no cortan las conexiones que pasan un rato sin mensajes.
 
 ## Compresión delta
 
@@ -165,7 +165,7 @@ function onSensor(x, y) {
 
 El umbral es un compromiso: más alto ahorra más datos pero el movimiento se nota más "a saltos". Conviene probar varios valores y elegir uno.
 
-En el mando real (`controller/sensores.js`) la inclinación se lee como mucho cada 33 ms y el umbral es de 2 unidades cuantizadas. La agitación se lee cada 50 ms y solo se envía si la intensidad cambia al menos 0,04. En el Laberinto, la postura con la que se empieza cuenta como plana, y el botón «Recalibrar» la vuelve a tomar.
+En el mando real (`controller/sensores.js`) la inclinación se lee como mucho cada 33 ms y el umbral es de 2 unidades cuantizadas. La agitación se lee cada 50 ms y solo se envía si la intensidad cambia al menos 0,04. En el Laberinto, la postura con la que se empieza cuenta como plana, y el botón «Recalibrar» la vuelve a tomar. La inclinación no se calcula restando ángulos, sino con el vector de gravedad que dan `beta` y `gamma`: así no da saltos aunque el móvil se sujete casi vertical. Las inclinaciones de menos del 5 % cuentan como plano, para que la bola no se mueva sola, y si al calibrar el móvil está en horizontal, los ejes se giran con la pantalla.
 
 ## Comparativa de tamaños
 

@@ -89,6 +89,14 @@ Abre la pantalla principal en `http://localhost:3000/` y escanea el QR con el m�
 
 Para probar solo algunos minijuegos se pone su id en `MINIJUEGOS`, separados por comas: `MINIJUEGOS=laberinto npm run dev`.
 
+Para probar sin móviles, `npm run simular` crea una sala y la juega entera con mandos falsos (bots) que se conectan por WebSocket como un móvil de verdad: agitan, buscan el camino en el laberinto y pulsan tras la señal. Con el servidor ya arrancado en otra terminal:
+
+```bash
+npm run simular -- --jugadores 8                 # contra http://localhost:3000
+npm run simular -- --jugadores 4 --url https://….trycloudflare.com
+npm run simular -- --jugadores 8 --quieto        # bots casi quietos, para ver el efecto de la compresión delta
+```
+
 Los sensores del móvil solo funcionan con HTTPS, así que para agitar de verdad hay que usar `npm run dev`. Sin sensor (por ejemplo, abriendo el mando en otra pestaña del PC para probar), tocar la pantalla muy rápido cuenta como agitar, y arrastrar el dedo por el círculo, como inclinar.
 
 | Ruta | Qué sirve |

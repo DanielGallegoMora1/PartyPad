@@ -12,11 +12,14 @@ const UMBRAL = 0.04; // compresión delta: solo se envía si cambia al menos est
 const SIN_SENSOR = 1500; // ms sin lecturas para dar el sensor por perdido
 
 const GRADOS_MAX = 25; // inclinación que cuenta como inclinar al máximo
+const ZONA_MUERTA = 0.05; // inclinaciones tan pequeñas cuentan como plano, para que la bola no se mueva sola
 const ENVIO_INCLINACION = 33; // unos 30 por segundo como mucho
 const UMBRAL_INCLINACION = 2; // compresión delta, en unidades cuantizadas a int8 (de -127 a 127)
 
+const RAD = Math.PI / 180;
 const cuantizar = (v) => Math.round(v * 127);
 const limitar = (v) => Math.max(-1, Math.min(1, v));
+const sinZonaMuerta = (v) => Math.sign(v) * Math.max(0, Math.abs(v) - ZONA_MUERTA) / (1 - ZONA_MUERTA);
 
 // iOS pide un permiso para cada sensor.
 const conPermiso = [globalThis.DeviceMotionEvent, globalThis.DeviceOrientationEvent].filter(
@@ -93,22 +96,69 @@ export function medirAgitado({ alCambiar, alEnviar }) {
   };
 }
 
+// Dirección "hacia arriba" del mundo vista desde el móvil (ejes del móvil: x a la derecha, y hacia el borde
+// de arriba, z saliendo de la pantalla), a partir de beta y gamma de DeviceOrientation.
+function arriba(beta, gamma) {
+  const b = beta * RAD;
+  const g = gamma * RAD;
+  return { x: -Math.cos(b) * Math.sin(g), y: Math.sin(b), z: Math.cos(b) * Math.cos(g) };
+}
+
+const punto = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+const cruz = (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
+
+// Parte de v perpendicular a u, de largo 1.
+function perpendicular(v, u) {
+  const k = punto(v, u);
+  const p = { x: v.x - k * u.x, y: v.y - k * u.y, z: v.z - k * u.z };
+  const largo = Math.hypot(p.x, p.y, p.z);
+  return { x: p.x / largo, y: p.y / largo, z: p.z / largo };
+}
+
+// Ejes de la postura neutra, con u el "arriba" en esa postura: e1 y e2 son las direcciones en las que se mide
+// la inclinación, lo más parecidas posible a los ejes x e y del móvil. Si uno de ellos está casi vertical
+// (móvil de lado), se parte del otro.
+function ejes(u) {
+  if (Math.abs(u.x) < 0.9) {
+    const e1 = perpendicular({ x: 1, y: 0, z: 0 }, u);
+    return { e1, e2: cruz(u, e1) };
+  }
+  const e2 = perpendicular({ x: 0, y: 1, z: 0 }, u);
+  return { e1: cruz(e2, u), e2 };
+}
+
+// Giro de la pantalla en grados (0, 90, 180 o 270). iOS antiguo solo tiene window.orientation.
+function giroPantalla() {
+  const angulo = screen.orientation?.angle ?? globalThis.orientation ?? 0;
+  return ((angulo % 360) + 360) % 360;
+}
+
 // Inclinar. x e y entre -1 y 1: x positivo hacia la derecha, y positivo hacia abajo (hacia el jugador).
 // La postura con la que se empieza cuenta como plana, para no tener que sujetar el móvil horizontal.
+// Se calcula con el vector de gravedad y no restando ángulos: así funciona igual aunque el móvil esté casi
+// vertical, donde beta y gamma dan saltos. Si al calibrar el móvil está en horizontal, los ejes se giran con
+// la pantalla; si gira después (al inclinarlo mucho), se mantienen, para que el control no cambie a mitad.
 // alCambiar(x, y) para pintar el nivel; alEnviar(x, y) cuando hay que mandarlo al servidor.
 export function medirInclinacion({ alCambiar, alEnviar }) {
   let x = 0;
   let y = 0;
-  let neutro = null;
+  let neutro = null; // { e1, e2, giro }
   let enviado = { x: 0, y: 0 }; // cuantizado
   let ultimaLectura = 0;
+  const escala = Math.sin(GRADOS_MAX * RAD);
 
   function alOrientar(e) {
     if (e.beta == null || e.gamma == null) return;
     ultimaLectura = performance.now();
-    neutro ??= { beta: e.beta, gamma: e.gamma };
-    x = limitar((e.gamma - neutro.gamma) / GRADOS_MAX);
-    y = limitar((e.beta - neutro.beta) / GRADOS_MAX);
+    const u = arriba(e.beta, e.gamma);
+    neutro ??= { ...ejes(u), giro: giroPantalla() * RAD };
+    // La bola rueda hacia donde baja el móvil: al contrario de "arriba".
+    const px = limitar(-punto(u, neutro.e1) / escala);
+    const py = limitar(punto(u, neutro.e2) / escala);
+    const c = Math.cos(neutro.giro);
+    const s = Math.sin(neutro.giro);
+    x = sinZonaMuerta(limitar(px * c + py * s));
+    y = sinZonaMuerta(limitar(-px * s + py * c));
   }
 
   const hayGiroscopio = () => performance.now() - ultimaLectura < SIN_SENSOR;

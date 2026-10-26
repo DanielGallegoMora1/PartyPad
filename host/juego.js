@@ -4,8 +4,24 @@ import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { Carrera } from './juegos/carrera.js';
 import { Laberinto } from './juegos/laberinto.js';
 import { Reflejos } from './juegos/reflejos.js';
+import { Machaca } from './juegos/machaca.js';
+import { Cronometro } from './juegos/cronometro.js';
+import { Sumo } from './juegos/sumo.js';
+import { Esquiva } from './juegos/esquiva.js';
+import { Quiz } from './juegos/quiz.js';
+import { Colores } from './juegos/colores.js';
 
-const ESCENAS = { carrera: Carrera, laberinto: Laberinto, reflejos: Reflejos };
+const ESCENAS = {
+  carrera: Carrera,
+  laberinto: Laberinto,
+  reflejos: Reflejos,
+  machaca: Machaca,
+  cronometro: Cronometro,
+  sumo: Sumo,
+  esquiva: Esquiva,
+  quiz: Quiz,
+  colores: Colores,
+};
 
 let juego = null;
 let listo = null; // promesa que se cumple cuando Phaser ha arrancado

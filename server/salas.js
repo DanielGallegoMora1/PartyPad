@@ -118,13 +118,13 @@ export class Sala {
   }
 
   // Desde el lobby o, para jugar otra vez, desde el podio.
-  empezar() {
+  empezar(rondas) {
     const enPodio = this.partida?.fase === 'podio';
     if ((this.state !== 'lobby' && !enPodio) || this.jugadores.size < 2) return;
     if (minijuegosPartida(this.packs).length === 0) return;
     this.partida?.parar();
     this.state = 'jugando';
-    this.partida = new Partida(this);
+    this.partida = new Partida(this, rondas);
     this.partida.empezar();
     this.avisarObservadores();
   }

@@ -37,7 +37,7 @@ function mensajePantalla(socket, msg) {
       return;
     }
     case 'start_game':
-      return sala?.empezar();
+      return sala?.empezar(msg.rounds);
     case 'back_to_lobby':
       return sala?.volverAlLobby();
     case 'kick':

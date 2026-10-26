@@ -80,7 +80,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 |---|---|---|
 | `create_room` | | Crea una sala nueva |
 | `resume_room` | `code`, `token` | Recupera la sala tras recargar la página |
-| `start_game` | | Empieza la partida (2 jugadores o más). También desde el podio, para jugar otra vez |
+| `start_game` | `rounds` (opcional) | Empieza la partida (2 jugadores o más) con `rounds` minijuegos al azar y sin repetir; sin `rounds`, todos. También desde el podio, para jugar otra vez |
 | `back_to_lobby` | | Vuelve al lobby |
 | `kick` | `id` | Expulsa a un jugador |
 | `close_room` | | Cierra la sala |
@@ -93,18 +93,18 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `room_created` | `code`, `token` | Sala creada; el token sirve para `resume_room` |
 | `room_resumed` | `code`, `state`, `players` | Sala recuperada |
 | `resume_error` | | El código o el token no valen |
-| `player_joined` | `player` (`id`, `name`, `color`, `connected`) | Entra un jugador |
+| `player_joined` | `player` (`id`, `name`, `color`, `avatar`, `connected`) | Entra un jugador |
 | `player_status` | `id`, `connected` | Un jugador se desconecta o vuelve |
 | `player_left` | `id` | Un jugador sale, es expulsado o no vuelve a tiempo |
-| `minigames` | `list` (`id`, `name`, `instructions`, `control`) | Al crear o recuperar la sala y tras `packs_installed`: los minijuegos de la partida |
+| `minigames` | `list` (`id`, `name`, `instructions`, `control`, `clock`) | Al crear o recuperar la sala y tras `packs_installed`: los minijuegos de la partida |
 | `packs_updated` | `version` | Hay un pack nuevo o actualizado en el manifest: la pantalla vuelve a sincronizar |
 
 **Mando → servidor**
 
 | Mensaje | Campos | Qué hace |
 |---|---|---|
-| `room_info` | `code` | Consulta la sala antes de unirse; mientras elige, recibe los cambios de colores |
-| `join_room` | `code`, `name`, `color` | Se une. El nombre tiene como máximo 16 caracteres y el color es un índice de `shared/colores.js` |
+| `room_info` | `code` | Consulta la sala antes de unirse; mientras elige, recibe los cambios de avatares libres |
+| `join_room` | `code`, `name`, `avatar` | Se une. El nombre tiene como máximo 16 caracteres y el avatar es un índice de `shared/avatares.js`. El color lo asigna el servidor (el primero libre de `shared/colores.js`) |
 | `rejoin` | `code`, `token` | Vuelve con el token guardado en el móvil |
 | `leave_room` | | Sale de la sala |
 | `input_stats` | `samples`, `sent` | Al dejar de leer el sensor: lecturas tomadas y mensajes enviados, para medir la compresión delta |
@@ -113,9 +113,9 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 
 | Mensaje | Campos | Cuándo |
 |---|---|---|
-| `room_info` | `code`, `exists`, `state`, `full`, `takenColors` | Respuesta a `room_info` y cambios de colores |
+| `room_info` | `code`, `exists`, `state`, `full`, `takenAvatars` | Respuesta a `room_info` y cambios de avatares |
 | `joined` | `code`, `token`, `state`, `hostConnected`, `player` | Unión o reconexión correcta |
-| `join_error` | `reason`: `not_found`, `started`, `full`, `invalid_name`, `invalid_color`, `color_taken` | No se ha podido unir |
+| `join_error` | `reason`: `not_found`, `started`, `full`, `invalid_name`, `invalid_avatar`, `avatar_taken` | No se ha podido unir |
 | `rejoin_error` | | El token ya no vale; hay que unirse como jugador nuevo |
 | `host_status` | `connected` | La pantalla se desconecta o vuelve |
 | `kicked` | | El anfitrión lo ha expulsado |
@@ -134,7 +134,7 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
-Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar` o `apuntar`. En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
+Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (4 botones de colores, con el número de botón de 0 a 3 en BUTTON) o `apuntar`. Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
 
 A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la ronda, como el mapa del laberinto, o `null`) y el estado del minijuego. Así puede dibujarlo desde las instrucciones o al recargar a mitad, sin mandar el mapa en cada `state_update`.
 
@@ -148,11 +148,24 @@ A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la
 | `reflex_wait` | | `signal` y `signals`, al empezar cada señal de Reflejos (y al reconectarse a mitad) |
 | `reaction` | | Tras pulsar en Reflejos: `ms`, o `early: true` (antes de la señal, con un VIBRATE de 400 ms y `ms` de penalización) o `missed: true` (no pulsó a tiempo) |
 
-Los puntos por puesto en cada ronda son 10, 8, 6, 5, 4, 3, 2 y 1. Los empatados comparten puesto y puntos.
+Los puntos por puesto en cada ronda son 15, 12, 10, 8, 7, 6, 5, 4, 3, 2 y 1; del 12º en adelante, 0. Los empatados comparten puesto y puntos.
+
+**Avisos al mando (`hint`):** los minijuegos nuevos le dicen al mando qué enseñar con `hint`: `title`, `text`, `mood` (`bien`, `mal` o nada) y `lock` (si se bloquean o desbloquean los botones). Por ejemplo, el número de pregunta del Quiz, «¡Parado!» en el Cronómetro o «¡Te han echado!» en el Sumo.
+
+**Estado de los minijuegos nuevos** (además de `ms`):
+
+| Minijuego | `state_update` |
+|---|---|
+| Machaca | `players` con `id` y `taps` |
+| Cronómetro | `target`, `time`, `hidden` (el reloj ya no se ve), `done` (se descubren los tiempos) y `players` con `id`, `stopped` y `at` (el tiempo, solo con `done`) |
+| Sumo | `radius` (el de la plataforma, que encoge) y `players` con `id`, `x`, `y` y `out` |
+| Esquiva | `players` con `id`, `x`, `y` y `out`; `meteors` con `n`, `x`, `y`, `r` y `t` (de 0 a 1 hasta el impacto); e `impacts` con `n`, `x`, `y` y `r` |
+| Quiz | `phase` (`pregunta` o `respuesta`), `turn`, `turns`, `question`, `options`, `correct` (solo en `respuesta`) y `players` con `id`, `answered`, `choice`, `gained` (solo en `respuesta`) y `points` |
+| Colores | Lo mismo que el Quiz, pero con `word` (la palabra) e `ink` (el color de la tinta: el índice del botón correcto) en lugar de la pregunta |
 
 **Reflejos:** se juegan 5 señales. Antes de cada una hay una espera al azar de 1,5 a 4,5 s; luego hay 1,5 s para pulsar y 2,5 s mostrando los tiempos. Gana quien menos tiempo suma: pulsar antes de la señal suma 2 s y no pulsar, 1,5 s. El servidor mide el tiempo desde que manda la señal a la pantalla (sin esperar al siguiente `state_update`) hasta que le llega el BUTTON. La señal solo aparece en la pantalla grande, así que su retraso es el mismo para todos y la diferencia entre jugadores solo depende de la subida de cada móvil.
 
-**Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 8 jugadores, cada uno con un color distinto. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos. El servidor manda un ping de WebSocket a cada conexión cada 15 segundos y cierra la que no ha contestado al anterior: así detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue no cortan las conexiones que pasan un rato sin mensajes.
+**Reglas de la sala:** el código tiene 4 letras sin I ni O, para no confundirlas con 1 y 0. Caben 16 jugadores, cada uno con un avatar y un color distintos. Un mando desconectado en el lobby conserva su sitio 30 segundos; durante la partida lo conserva siempre. Una sala sin pantalla se cierra a los 10 minutos. El servidor manda un ping de WebSocket a cada conexión cada 15 segundos y cierra la que no ha contestado al anterior: así detecta un móvil que se queda sin red sin cerrar la conexión, y el túnel o el proxy del despliegue no cortan las conexiones que pasan un rato sin mensajes.
 
 ## Compresión delta
 

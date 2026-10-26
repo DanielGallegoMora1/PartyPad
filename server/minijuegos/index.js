@@ -1,10 +1,16 @@
-// Minijuegos de la partida, en el orden en que se juegan: los tres de base y después los packs descargados.
+// Minijuegos de la partida: los de base y los packs descargados. La partida los baraja (ver partida.js).
 import { Carrera } from './carrera.js';
 import { Laberinto } from './laberinto.js';
 import { Reflejos } from './reflejos.js';
+import { Machaca } from './machaca.js';
+import { Cronometro } from './cronometro.js';
+import { Sumo } from './sumo.js';
+import { Esquiva } from './esquiva.js';
+import { Quiz } from './quiz.js';
+import { Colores } from './colores.js';
 import { minijuegosDePacks } from '../packs.js';
 
-const BASE = [Carrera, Laberinto, Reflejos];
+const BASE = [Carrera, Laberinto, Reflejos, Machaca, Cronometro, Sumo, Esquiva, Quiz, Colores];
 
 // Para probar solo algunos, por su id: MINIJUEGOS=laberinto npm run dev
 const elegidos = process.env.MINIJUEGOS?.split(',').map((id) => id.trim());

@@ -332,6 +332,24 @@ body[data-vista='partida'] .vista-partida {
   display: none;
 }
 
+/* Selector de rondas, encima de Empezar partida */
+.rondas {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.rondas select {
+  font: 600 1rem var(--fuente);
+  color: var(--texto);
+  background: var(--fondo-2);
+  border: 1px solid var(--tarjeta-borde);
+  border-radius: 0.7rem;
+  padding: 0.35rem 0.6rem;
+}
+
 /* Botón para silenciar, siempre a mano en una esquina */
 
 .boton-sonido {
@@ -614,6 +632,10 @@ body[data-vista='partida'] .vista-partida {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition: color 0.2s, border-color 0.2s;
+}
+
+.sin-reloj .reloj {
+  visibility: hidden;
 }
 
 .apurado .reloj {

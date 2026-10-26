@@ -53,9 +53,9 @@ PartyPad es una aplicación web multijugador de minijuegos. La partida se muestr
 | Id | Requisito |
 |---|---|
 | RF1 | La pantalla principal crea una sala con un código de 4 letras y un QR de acceso. |
-| RF2 | Los jugadores se unen desde el navegador del móvil, eligen nombre y color y aparecen en el lobby (máximo 8). |
+| RF2 | Los jugadores se unen desde el navegador del móvil, eligen nombre y avatar y aparecen en el lobby (máximo 16). |
 | RF3 | El anfitrión inicia la partida, que consta de varias rondas de minijuegos. |
-| RF4 | Incluye de base tres minijuegos: Carrera de agitar, Laberinto inclinable y Reflejos. |
+| RF4 | Incluye de base nueve minijuegos (Carrera de agitar, Laberinto inclinable, Reflejos, Machaca, Cronómetro, Sumo, Esquiva, Quiz y Colores), que se juegan en orden aleatorio. |
 | RF5 | Un cuarto minijuego, Apunta y dispara, se distribuye como pack descargable. |
 | RF6 | Hay puntuación por ronda, clasificación acumulada y podio final. |
 | RF7 | Si un jugador se desconecta, puede volver a la partida durante 30 segundos con su token de reconexión. |
@@ -69,7 +69,7 @@ PartyPad es una aplicación web multijugador de minijuegos. La partida se muestr
 | RNF1 | Latencia percibida inferior a 100 ms entre la acción en el móvil y la reacción en pantalla. |
 | RNF2 | Instalación mínima: accesible por una URL pública con HTTPS, y ejecución local con `npm install && npm start`. |
 | RNF3 | La interfaz del mando se puede usar con una mano y en vertical. |
-| RNF4 | Soporta 8 jugadores simultáneos por sala sin pérdida apreciable de fluidez. |
+| RNF4 | Soporta 16 jugadores simultáneos por sala sin pérdida apreciable de fluidez. |
 
 ## Casos de uso
 
@@ -80,7 +80,7 @@ flowchart LR
     subgraph SISTEMA["PartyPad"]
         direction TB
         CU2(["CU2 Unirse a una sala con QR o código"])
-        CU3(["CU3 Elegir nombre y color"])
+        CU3(["CU3 Elegir nombre y avatar"])
         CU5(["CU5 Jugar un minijuego"])
         CU8(["CU8 Reconectarse a la partida"])
         CU6(["CU6 Ver clasificación y podio"])
@@ -110,7 +110,7 @@ flowchart LR
 |---|---|---|
 | CU1 Crear sala | Anfitrión | Abre PartyPad en el PC y obtiene un código y un QR. |
 | CU2 Unirse a una sala | Jugador | Escanea el QR o escribe el código en el móvil. Incluye CU3. |
-| CU3 Elegir nombre y color | Jugador | Personaliza su jugador antes de entrar en el lobby. |
+| CU3 Elegir nombre y avatar | Jugador | Personaliza su jugador antes de entrar en el lobby. |
 | CU4 Iniciar partida | Anfitrión | Empieza la partida cuando hay al menos 2 jugadores. |
 | CU5 Jugar un minijuego | Jugador | Controla su personaje con el móvil durante la ronda. |
 | CU6 Ver clasificación y podio | Ambos | Resultados tras cada ronda y podio al final. |

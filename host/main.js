@@ -186,7 +186,24 @@ async function actualizarPacks() {
   enviar({ type: 'packs_installed', ids: packsListos });
 }
 
+// Opciones de rondas según los minijuegos que hay: 3, 5 y todos (por defecto, lo último elegido o todos).
+function pintarRondas() {
+  const total = minijuegos.length;
+  const select = $('rondas');
+  let elegido = select.value;
+  if (!elegido) {
+    try {
+      elegido = localStorage.getItem('partypad:rondas') ?? '';
+    } catch {}
+  }
+  const opciones = [3, 5].filter((n) => n < total).map((n) => new Option(`${n} al azar`, n));
+  opciones.push(new Option(`Todos (${total})`, ''));
+  select.replaceChildren(...opciones);
+  select.value = opciones.some((o) => o.value === elegido) ? elegido : '';
+}
+
 function pintarMinijuegos() {
+  pintarRondas();
   $('minijuegos').replaceChildren(
     ...minijuegos.map((m) => {
       const li = document.createElement('li');
@@ -283,7 +300,7 @@ function pintarLobby() {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷' };
 let fin = 0; // performance.now() en que acaba la fase actual, para los relojes
 let ultimaCuenta = null;
 
@@ -326,6 +343,8 @@ function empezarPartida() {
 // Común a todas las fases de una ronda: monta su minijuego (si no lo estaba ya) y pone el reloj.
 function enRonda(msg) {
   $('ronda').textContent = `Ronda ${msg.round} de ${msg.rounds}`;
+  // Algunos minijuegos esconden el tiempo que queda (en el Cronómetro sería hacer trampa).
+  escenario.classList.toggle('sin-reloj', msg.minigame.clock === false);
   juego.montar(msg.minigame.id, msg.round, jugadoresJuego(), msg);
   juego.actualizar(msg);
   ponerFin(msg.ms);
@@ -428,9 +447,16 @@ botonSonido.addEventListener('click', () => {
 pintarSonido();
 
 $('crear').addEventListener('click', () => enviar({ type: 'create_room' }));
-$('empezar').addEventListener('click', () => enviar({ type: 'start_game' }));
+// Rondas: los minijuegos salen al azar y sin repetir; aquí se elige cuántos.
+const empezarPartida_ = () => enviar({ type: 'start_game', rounds: Number($('rondas').value) || undefined });
+$('empezar').addEventListener('click', empezarPartida_);
 $('volver').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
-$('otra-vez').addEventListener('click', () => enviar({ type: 'start_game' }));
+$('otra-vez').addEventListener('click', empezarPartida_);
+$('rondas').addEventListener('change', () => {
+  try {
+    localStorage.setItem('partypad:rondas', $('rondas').value);
+  } catch {}
+});
 const dialogoCerrar = $('dialogo-cerrar');
 
 $('cerrar').addEventListener('click', () => {

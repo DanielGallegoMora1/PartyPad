@@ -14,7 +14,7 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 ## Cómo funciona
 
 1. El PC conectado al proyector abre PartyPad y crea una sala con un código de 4 letras y un QR.
-2. Cada jugador escanea el QR con el móvil, elige nombre y color y aparece en el lobby (máximo 8).
+2. Cada jugador escanea el QR con el móvil, elige nombre y avatar y aparece en el lobby (máximo 16). El color se lo asigna el servidor.
 3. Se juegan varias rondas de minijuegos cortos controlados con los sensores del móvil.
 4. Al final se muestra un podio con la clasificación.
 
@@ -25,7 +25,15 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 | Carrera de agitar | Acelerómetro: gana quien más agite el móvil | Incluido |
 | Laberinto inclinable | Giroscopio: guiar una bola inclinando el móvil | Incluido |
 | Reflejos | Táctil: pulsar el primero tras la señal; pulsar antes vibra como penalización | Incluido |
+| Machaca el botón | Táctil: quien más veces pulse en 10 segundos | Incluido |
+| Cronómetro a ciegas | Táctil: parar el reloj en 7,00 s, aunque se oculta a los 2,5 s | Incluido |
+| Sumo | Giroscopio: echar a los demás de una plataforma que encoge | Incluido |
+| Esquiva meteoritos | Giroscopio: apartarse de donde van a caer los meteoritos | Incluido |
+| Quiz | 4 botones de colores: preguntas de cultura general, al estilo Kahoot | Incluido |
+| Colores | 4 botones de colores: pulsar el color de la tinta, no el de la palabra | Incluido |
 | Apunta y dispara | El móvil como puntero | Pack descargable |
+
+En cada partida los minijuegos salen en orden aleatorio y sin repetirse. En el lobby se elige cuántos: 3, 5 o todos.
 
 ## Arquitectura en un vistazo
 

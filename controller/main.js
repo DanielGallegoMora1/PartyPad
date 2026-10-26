@@ -4,6 +4,7 @@
 import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
 import { AVATARES } from '/shared/avatares.js';
+import { OPCIONES } from '/shared/opciones.js';
 import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
@@ -51,6 +52,8 @@ const emoji = (indice) => AVATARES[indice]?.emoji ?? '?';
 
 function mostrar(vista) {
   document.body.dataset.vista = vista;
+  // La franja de avisos del minijuego solo tiene sentido mientras se juega.
+  if (!['agitar', 'inclinar', 'apuntar', 'meta'].includes(vista)) pista(null);
 }
 
 function ponerColor(indice) {
@@ -166,7 +169,7 @@ function alRecibir(msg) {
       break;
 
     case 'round_start':
-      empezarControl(msg.minigame.control);
+      empezarControl(msg.minigame);
       break;
 
     case 'finished':
@@ -179,6 +182,10 @@ function alRecibir(msg) {
 
     case 'reaction':
       alReaccionar(msg);
+      break;
+
+    case 'hint':
+      alPista(msg);
       break;
 
     case 'round_end':
@@ -346,7 +353,7 @@ $('salir').addEventListener('click', () => {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷' };
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 let fin = 0; // performance.now() en que acaba la fase actual
 let ultimaCuenta = null;
@@ -400,6 +407,7 @@ function alIntro(msg) {
   $('instr-nombre').textContent = minigame.name;
   $('instr-texto').textContent = minigame.instructions;
   pintarPermiso(minigame.control);
+  pista(null);
   mostrar('instrucciones');
 }
 
@@ -428,18 +436,92 @@ $('activar-movimiento').addEventListener('click', async () => {
 
 const enviarBinario = (datos) => yo && socket.readyState === WebSocket.OPEN && socket.send(datos);
 
-function empezarControl(control) {
+let juegoActual = null; // id del minijuego de la ronda
+let toques = 0; // en Machaca, el mando cuenta sus propias pulsaciones
+
+function empezarControl({ control, id }) {
   pararMedicion();
+  pista(null);
+  juegoActual = id;
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
   else if (control === 'apuntar') empezarApuntar();
+  else if (control === 'opciones') empezarOpciones();
   else empezarToque();
+}
+
+// Avisos del minijuego (hint): título, texto, si ha ido bien o mal y si se bloquean los botones.
+// En las vistas de tocar y de opciones van dentro de la vista; en las demás, en una franja arriba.
+function alPista({ title = '', text = '', mood = '', lock }) {
+  const vista = document.body.dataset.vista;
+  if (vista === 'partida') {
+    $('toque-senal').textContent = title;
+    const estado = $('toque-estado');
+    estado.textContent = text;
+    estado.className = `toque-estado ${mood}`;
+    if (lock !== undefined) boton.classList.toggle('usado', lock);
+  } else if (vista === 'opciones') {
+    $('opciones-titulo').textContent = title;
+    const estado = $('opciones-estado');
+    estado.textContent = text;
+    estado.className = `opciones-estado ${mood}`;
+    if (lock === false) bloquearOpciones(false);
+    if (lock === true) bloquearOpciones(true);
+  } else {
+    pista([title, text].filter(Boolean).join(' · '), mood);
+  }
+}
+
+function pista(texto, mood = '') {
+  const el = $('pista-juego');
+  el.hidden = !texto;
+  el.textContent = texto ?? '';
+  el.className = `pista-juego ${mood}`;
+}
+
+// Opciones: 4 botones con el color y la forma de las respuestas de la pantalla (Quiz y Colores).
+function empezarOpciones() {
+  $('opciones-titulo').textContent = '';
+  $('opciones-estado').textContent = 'Mira la pantalla grande';
+  $('opciones-estado').className = 'opciones-estado';
+  bloquearOpciones(true);
+  mostrar('opciones');
+}
+
+function bloquearOpciones(si) {
+  for (const b of document.querySelectorAll('.opcion')) {
+    b.disabled = si;
+    if (!si) b.classList.remove('elegida');
+  }
+}
+
+function crearOpciones() {
+  const botones = OPCIONES.map(({ nombre, hex, forma }, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'opcion';
+    b.style.setProperty('--color', hex);
+    b.textContent = forma;
+    b.setAttribute('aria-label', nombre);
+    b.addEventListener('pointerdown', () => {
+      if (b.disabled || !yo) return;
+      enviarBinario(encodeButton(yo.id, i, true));
+      enviarBinario(encodeButton(yo.id, i, false));
+      bloquearOpciones(true);
+      b.classList.add('elegida');
+    });
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+    return b;
+  });
+  $('opciones').replaceChildren(...botones);
 }
 
 // Tocar: un botón grande. En Reflejos, el servidor avisa de cada señal y responde con el tiempo de cada pulsación.
 function empezarToque() {
   $('toque-senal').textContent = '';
   pintarToque('', '');
+  toques = 0;
+  if (juegoActual === 'machaca') pintarToque('0', 'contador');
   mostrar('partida');
 }
 
@@ -447,7 +529,7 @@ function pintarToque(texto, clase) {
   const estado = $('toque-estado');
   estado.textContent = texto;
   estado.className = `toque-estado ${clase}`;
-  boton.classList.toggle('usado', clase !== '');
+  boton.classList.toggle('usado', clase !== '' && clase !== 'contador');
 }
 
 function alEsperarSenal(msg) {
@@ -602,6 +684,7 @@ function pulsar(e) {
   boton.setPointerCapture?.(e.pointerId);
   boton.classList.add('pulsado');
   enviarBoton(true);
+  if (juegoActual === 'machaca' && document.body.dataset.vista === 'partida') pintarToque(String(++toques), 'contador');
 }
 
 function soltar() {
@@ -617,6 +700,7 @@ boton.addEventListener('pointercancel', soltar);
 boton.addEventListener('contextmenu', (e) => e.preventDefault());
 
 crearPaleta();
+crearOpciones();
 conectar();
 
 // PWA: el Service Worker guarda el mando en caché para que cargue al instante (solo con HTTPS o en localhost).

@@ -16,7 +16,9 @@ export class Reflejos extends Minijuego {
   static nombre = 'Reflejos';
   static instrucciones = 'Cuando la pantalla se ponga verde, ¡pulsa! Si pulsas antes de tiempo, te penaliza';
   static control = 'tocar';
-  static envio = 50;
+  // Cada cambio (la señal, una pulsación) se manda al momento con enviarAhora; el envío periódico solo
+  // hace falta para el reloj.
+  static envio = 1000;
 
   constructor(ids, opciones) {
     super(ids, opciones);

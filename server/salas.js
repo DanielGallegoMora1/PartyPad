@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { COLORES } from '../shared/colores.js';
 import { decode, encodeVibrate } from '../shared/protocol.js';
 import { Partida } from './partida.js';
+import { minijuegosPartida } from './minijuegos/index.js';
 
 export const MAX_JUGADORES = 8;
 const MAX_NOMBRE = 16; // en caracteres
@@ -49,6 +50,7 @@ export class Sala {
     this.partida = null;
     this.jugadores = new Map(); // id → { id, name, color, token, socket, timer }
     this.observadores = new Set(); // mandos que eligen nombre y color, para avisarles de los colores libres
+    this.packs = new Set(); // ids de los packs que la pantalla tiene descargados
     this.timerCierre = null;
   }
 
@@ -104,10 +106,21 @@ export class Sala {
     this.timerCierre = setTimeout(() => this.cerrar(), ESPERA_PANTALLA);
   }
 
+  // La pantalla dice qué packs tiene descargados; se le responde con los minijuegos que tendrá la partida.
+  ponerPacks(ids) {
+    this.packs = new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : []);
+    this.avisarMinijuegos();
+  }
+
+  avisarMinijuegos() {
+    this.aPantalla({ type: 'minigames', list: minijuegosPartida(this.packs).map((M) => M.info()) });
+  }
+
   // Desde el lobby o, para jugar otra vez, desde el podio.
   empezar() {
     const enPodio = this.partida?.fase === 'podio';
     if ((this.state !== 'lobby' && !enPodio) || this.jugadores.size < 2) return;
+    if (minijuegosPartida(this.packs).length === 0) return;
     this.partida?.parar();
     this.state = 'jugando';
     this.partida = new Partida(this);
@@ -232,7 +245,7 @@ export class Sala {
   // para que nadie se haga pasar por otro.
   entrada(j, data) {
     const msg = decode(data);
-    if (msg) this.partida?.entrada(j.id, msg);
+    if (msg) this.partida?.entrada(j.id, msg, data.length);
   }
 
   vibrar(data) {

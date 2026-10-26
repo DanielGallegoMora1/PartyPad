@@ -21,6 +21,7 @@ body[data-vista='instrucciones'] .vista-instrucciones,
 body[data-vista='cuenta'] .vista-cuenta,
 body[data-vista='agitar'] .vista-agitar,
 body[data-vista='inclinar'] .vista-inclinar,
+body[data-vista='apuntar'] .vista-apuntar,
 body[data-vista='meta'] .vista-meta,
 body[data-vista='resultados'] .vista-resultados,
 body[data-vista='podio'] .vista-podio,
@@ -259,6 +260,7 @@ body[data-vista='instrucciones'] .jugador-partida,
 body[data-vista='cuenta'] .jugador-partida,
 body[data-vista='agitar'] .jugador-partida,
 body[data-vista='inclinar'] .jugador-partida,
+body[data-vista='apuntar'] .jugador-partida,
 body[data-vista='meta'] .jugador-partida,
 body[data-vista='partida'] .jugador-partida,
 body[data-vista='resultados'] .jugador-partida,
@@ -380,6 +382,40 @@ body[data-vista='podio'] .jugador-partida {
   background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.4), transparent 45%), var(--jugador);
   box-shadow: 0 0 2rem color-mix(in srgb, var(--jugador) 60%, transparent);
   transition: left 0.05s linear, top 0.05s linear;
+}
+
+/* Apuntar: un recuadro con la forma de la pantalla grande y un gran botón de disparo */
+
+.mira {
+  position: relative;
+  width: min(86vw, 60vh);
+  aspect-ratio: 16 / 9;
+  margin-top: 3rem; /* debajo de la ficha del jugador */
+  border-radius: 1rem;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.1)) center / 2px 100% no-repeat,
+    linear-gradient(rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.1)) center / 100% 2px no-repeat,
+    var(--fondo-2);
+  border: 3px solid color-mix(in srgb, var(--jugador) 50%, transparent);
+  touch-action: none;
+}
+
+.punto-mira {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.6rem;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 4px solid var(--jugador);
+  box-shadow: 0 0 1rem var(--jugador);
+}
+
+.boton-disparo {
+  width: min(64vw, 40vh);
+  margin: auto 0 0;
+  font-size: 2.4rem;
 }
 
 /* Meta */

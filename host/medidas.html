@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PartyPad · Mediciones</title>
+  <link rel="icon" href="/shared/icono.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/shared/base.css">
+  <style>
+    /* Colores de las series: validados contra el fondo de las tarjetas (ver la skill de gráficas). */
+    :root {
+      --serie-1: #3987e5; /* JSON */
+      --serie-2: #d95926; /* MessagePack */
+      --serie-3: #199e70; /* binario sin delta / deflate por mensaje */
+      --serie-4: #c98500; /* binario con delta / deflate con contexto */
+    }
+
+    body { font-size: 16px; }
+    main { width: min(100% - 2rem, 72rem); margin: 0 auto; padding: 2rem 0 4rem; display: grid; gap: 1.5rem; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+    header h1 { font-size: 2rem; margin-right: auto; }
+    .filtros { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    .filtros label { color: var(--texto-suave); font-weight: 500; }
+    select { font: 500 1rem var(--fuente); color: var(--texto); background: var(--fondo-2); border: 1px solid var(--tarjeta-borde); border-radius: 0.6rem; padding: 0.4rem 0.6rem; }
+    .boton { font-size: 0.95rem; padding: 0.6em 1.2em; }
+    a.boton { text-decoration: none; display: inline-block; }
+
+    .tarjeta { padding: 1.5rem; display: grid; gap: 1rem; }
+    .tarjeta h2 { font-size: 1.35rem; }
+    .nota { color: var(--texto-suave); line-height: 1.45; max-width: 70ch; }
+
+    .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+    .cifra { padding: 1.1rem 1.25rem; border-radius: 1rem; background: var(--fondo-2); border: 1px solid var(--tarjeta-borde); }
+    .cifra strong { display: block; font-size: 2.2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .cifra span { color: var(--texto-suave); }
+
+    .leyenda { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; color: var(--texto-suave); font-size: 0.95rem; }
+    .leyenda i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; margin-right: 0.4rem; vertical-align: -1px; }
+
+    .grupo { display: grid; gap: 0.35rem; }
+    .grupo h3 { font-size: 1rem; font-weight: 600; margin: 0.6rem 0 0.2rem; }
+    .fila { display: grid; grid-template-columns: 11rem 1fr 6.5rem; align-items: center; gap: 0.75rem; padding: 2px 0; }
+    .fila .nombre { color: var(--texto-suave); font-size: 0.92rem; }
+    .fila .valor { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+    .pista { position: relative; height: 1.1rem; border-left: 1px solid rgb(255 255 255 / 0.25); }
+    .barra { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; min-width: 2px; }
+    .fila:hover .barra { filter: brightness(1.2); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+    th, td { padding: 0.45rem 0.6rem; text-align: right; border-bottom: 1px solid var(--tarjeta-borde); white-space: nowrap; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    th { color: var(--texto-suave); font-weight: 600; }
+    .tabla { overflow-x: auto; }
+    .vacio { color: var(--texto-suave); }
+
+    .tip { position: fixed; pointer-events: none; z-index: 10; padding: 0.5rem 0.75rem; border-radius: 0.6rem; background: #2a2152; border: 1px solid var(--tarjeta-borde); box-shadow: var(--sombra); font-size: 0.9rem; opacity: 0; transition: opacity 0.1s; }
+    .tip.visible { opacity: 1; }
+
+    @media (max-width: 40rem) {
+      .fila { grid-template-columns: 7.5rem 1fr 5rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 class="logo">Party<span>Pad</span> · Mediciones</h1>
+      <div class="filtros">
+        <label for="filtro-sala">Sala</label>
+        <select id="filtro-sala"><option value="">Todas</option></select>
+        <label for="filtro-juego">Minijuego</label>
+        <select id="filtro-juego"><option value="">Todos</option></select>
+        <a id="csv" class="boton boton-secundario" href="/api/medidas.csv" download>Descargar CSV</a>
+      </div>
+    </header>
+
+    <p class="nota">Lo que el servidor ha medido en cada ronda jugada desde que arrancó. La subida son las entradas de los mandos: el binario es lo que viaja de verdad, y JSON y MessagePack, lo que ocuparían esos mismos mensajes. Incluye las cabeceras de WebSocket (2 bytes y 4 de máscara por mensaje). Se actualiza sola cada 5 segundos.</p>
+
+    <section class="cifras" id="cifras"></section>
+
+    <section class="tarjeta">
+      <h2>Subida: mandos → servidor (bytes por segundo)</h2>
+      <p class="nota">«Binario sin delta» es lo que se enviaría mandando todas las lecturas del sensor; lo calcula cada mando contando lecturas y envíos.</p>
+      <div class="leyenda" id="leyenda-subida"></div>
+      <div id="subida"><p class="vacio">Aún no hay rondas medidas.</p></div>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Bajada: servidor → pantalla (bytes por segundo)</h2>
+      <p class="nota">Los <code>state_update</code> que recibe la pantalla durante la ronda. «Deflate con contexto» comprime todos los mensajes de la ronda en un mismo flujo, como haría la extensión permessage-deflate de WebSocket.</p>
+      <div class="leyenda" id="leyenda-bajada"></div>
+      <div id="bajada"><p class="vacio">Aún no hay rondas medidas.</p></div>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Todas las rondas</h2>
+      <div class="tabla"><table id="tabla"></table></div>
+    </section>
+  </main>
+  <div id="tip" class="tip" role="tooltip"></div>
+  <script type="module" src="medidas.js"></script>
+</body>
+</html>

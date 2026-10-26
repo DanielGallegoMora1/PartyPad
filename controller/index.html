@@ -6,6 +6,11 @@
   <meta name="theme-color" content="#140f2e">
   <title>PartyPad · Mando</title>
   <link rel="icon" href="/shared/icono.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/shared/icono-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PartyPad">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
@@ -90,6 +95,13 @@
     <p class="agitar-texto">¡Inclina!</p>
     <p id="inclinar-pista" class="suave"></p>
     <button id="recalibrar" class="boton boton-secundario" type="button">Recalibrar</button>
+  </section>
+
+  <section class="vista vista-apuntar">
+    <div id="mira" class="mira" aria-hidden="true"><span id="punto-mira" class="punto-mira"></span></div>
+    <p id="apuntar-pista" class="suave"></p>
+    <button id="disparar" class="boton-juego boton-disparo" type="button">¡Fuego!</button>
+    <button id="centrar" class="boton boton-secundario" type="button">Centrar</button>
   </section>
 
   <section class="vista vista-meta">

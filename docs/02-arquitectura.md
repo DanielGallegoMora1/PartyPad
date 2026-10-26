@@ -68,7 +68,7 @@ Página web móvil que se abre al escanear el QR. Se instala como PWA para que c
 - **Interfaz táctil:** botones grandes, usable con una mano y en vertical.
 - **Sensores:** `DeviceMotionEvent` (acelerómetro) y `DeviceOrientationEvent` (giroscopio).
 - **Vibración:** `navigator.vibrate()` para avisos y penalizaciones.
-- **Service Worker:** guarda en caché los recursos del mando con un número de versión.
+- **Service Worker:** guarda en caché los recursos del mando con un número de versión. La versión la pone el servidor (`server/pwa.js`): es un hash de los archivos que se guardan, así que cualquier cambio en el mando da una versión nueva, el móvil instala el Service Worker nuevo y borra la caché anterior. En producción sirve primero de la caché; en desarrollo, primero de la red. Con `manifest.webmanifest` y sus iconos, el mando se puede instalar como app.
 
 ## Tecnologías y por qué las elegimos
 
@@ -281,21 +281,40 @@ classDiagram
 
 ## Sistema de packs: descarga y actualización
 
-Cada pack es un ZIP con el código del minijuego, los sprites en WebP y los sonidos en Opus. El servidor publica un `manifest.json` con la lista de packs disponibles:
+Los tres minijuegos de base van con la aplicación. Los demás llegan como packs: un ZIP con el código de la escena, los sprites en WebP y los sonidos en Opus. El primero es **Apunta y dispara** (`packs/apunta/`).
+
+Cada pack es una carpeta de `packs/`:
+
+| Archivo | Qué es | ¿Viaja en el ZIP? |
+|---|---|---|
+| `pack.json` | `id`, `name`, `version`, `description` y `publicado` (si sale publicado al arrancar el servidor) | Sí |
+| `servidor.js` | La lógica, que hereda de `Minijuego`. Exporta una función que recibe `Minijuego` y `conPuestos`, para no depender de rutas del servidor | No: la carga el servidor |
+| `pantalla.js` | La escena de Phaser. Exporta una función que recibe Phaser y las URL de los recursos, porque la pantalla la carga desde IndexedDB y no puede importar nada por ruta | Sí |
+| `recursos/` | Sprites WebP y sonidos Opus | Sí |
+| `originales/` | Los mismos recursos en PNG y WAV, solo para el estudio de compresión | No |
+
+El servidor (`server/packs.js`) arma el ZIP de cada pack en memoria (con deflate para el código; las imágenes y el audio, que ya van comprimidos, se guardan tal cual), calcula su SHA-256 y sirve el manifest en `/packs/manifest.json`:
 
 ```json
 {
-  "version": 3,
+  "version": 2,
   "packs": [
-    { "id": "shake-race", "name": "Carrera de agitar",  "version": "1.2.0", "size": 184320, "sha256": "…" },
-    { "id": "tilt-maze",  "name": "Laberinto",          "version": "1.0.0", "size": 256000, "sha256": "…" },
-    { "id": "reflex",     "name": "Reflejos",           "version": "1.0.0", "size": 98304,  "sha256": "…" },
-    { "id": "aim-shoot",  "name": "Apunta y dispara",   "version": "1.0.0", "size": 312000, "sha256": "…" }
+    {
+      "id": "apunta",
+      "name": "Apunta y dispara",
+      "description": "Apunta con el móvil a la pantalla y dispara a las dianas",
+      "version": "1.0.0",
+      "size": 32581,
+      "sha256": "…",
+      "url": "/packs/apunta-1.0.0.zip"
+    }
   ]
 }
 ```
 
-Al arrancar, la pantalla principal compara el manifest con lo que tiene en su caché y descarga solo lo nuevo o actualizado, comprobando el hash antes de instalarlo.
+La `version` del manifest sube cada vez que cambia la lista. Al abrirse, la pantalla principal (`host/packs.js`) compara el manifest con lo que tiene en IndexedDB y descarga solo lo nuevo o actualizado, comprobando el hash antes de instalarlo. Después le dice al servidor qué packs tiene (`packs_installed`): solo esos entran en su partida, y el servidor le contesta con la lista de minijuegos (`minigames`), que se ve en el lobby.
+
+Si se publica un pack con el servidor en marcha (`npm run publicar -- apunta`) o cambia algo en `packs/`, el servidor manda `packs_updated` a todas las pantallas, que vuelven a sincronizar sin recargar. En el despliegue, publicar exige el `ADMIN_TOKEN` del servidor.
 
 ```mermaid
 sequenceDiagram
@@ -322,4 +341,4 @@ sequenceDiagram
     P->>P: Muestra el aviso Nuevo minijuego disponible
 ```
 
-**Para la demo:** empezamos la presentación con tres minijuegos, publicamos `aim-shoot` en el servidor en directo y la pantalla lo detecta y lo descarga. Así se ve el requisito de actualización funcionando.
+**Para la demo:** empezamos la presentación con tres minijuegos, publicamos `apunta` en el servidor en directo (`npm run publicar -- apunta --url https://… --token …`) y la pantalla lo detecta, lo descarga y aparece en el lobby marcado como «Nuevo». Así se ve el requisito de actualización funcionando. Al reiniciar el servidor vuelve a estar sin publicar, para poder repetirlo.

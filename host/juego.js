@@ -36,6 +36,17 @@ function crear() {
 
 const escena = () => (actual ? juego?.scene.getScene(actual) : null);
 
+// Escena de un pack descargado (ver packs.js). Si ya existía una versión anterior, la sustituye.
+export async function registrar(id, Escena) {
+  if (ESCENAS[id] === Escena) return;
+  ESCENAS[id] = Escena;
+  if (!listo) return; // se añadirá al arrancar Phaser
+  await listo;
+  if (actual === id) return; // no se cambia a mitad de ronda; la nueva se usará la próxima vez
+  if (juego.scene.getScene(id)) juego.scene.remove(id);
+  juego.scene.add(id, Escena, false);
+}
+
 // jugadores: [{ id, name, hex, connected }]. inicio: el mensaje de la fase, con el escenario (setup)
 // y el estado del minijuego. Si ya se está jugando esa ronda, no hace nada.
 export async function montar(id, numero, jugadores, inicio) {

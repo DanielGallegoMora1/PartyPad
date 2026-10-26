@@ -14,7 +14,7 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 ## Cómo funciona
 
 1. El PC conectado al proyector abre PartyPad y crea una sala con un código de 4 letras y un QR.
-2. Cada jugador escanea el QR con el móvil, elige nombre y avatar y aparece en el lobby (máximo 16). El color se lo asigna el servidor.
+2. Cada jugador escanea el QR con el móvil, elige nombre, avatar y color y aparece en el lobby (máximo 16).
 3. Se juegan varias rondas de minijuegos cortos controlados con los sensores del móvil.
 4. Al final se muestra un podio con la clasificación.
 

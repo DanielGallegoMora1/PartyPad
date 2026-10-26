@@ -65,7 +65,7 @@ function mensajeMando(socket, msg) {
         enviar(socket, { type: 'join_error', reason: 'not_found' });
         return;
       }
-      const { error, jugador } = sala.unir(socket, msg.name, msg.avatar);
+      const { error, jugador } = sala.unir(socket, msg.name, msg.avatar, msg.color);
       if (error) {
         enviar(socket, { type: 'join_error', reason: error });
         return;

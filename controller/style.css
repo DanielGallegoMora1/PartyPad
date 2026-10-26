@@ -178,8 +178,20 @@ legend {
   transition: transform 0.15s, background 0.15s;
 }
 
-.paleta label:has(input:checked) {
-  background: color-mix(in srgb, var(--acento) 35%, var(--fondo-2));
+.paleta-avatares label:has(input:checked) {
+  background: color-mix(in srgb, var(--jugador) 45%, var(--fondo-2));
+}
+
+/* Colores: círculos, 8 por fila */
+.paleta-colores {
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.paleta-colores label {
+  border-radius: 50%;
+  border: none;
+  background: var(--color);
+  box-shadow: inset 0 -0.2rem 0 rgb(0 0 0 / 0.18);
 }
 
 .paleta input {

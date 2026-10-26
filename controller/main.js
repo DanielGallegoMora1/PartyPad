@@ -9,7 +9,8 @@ import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaP
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
 const CLAVE_NOMBRE = 'partypad:nombre'; // para no tener que escribirlo cada vez
-const CLAVE_AVATAR = 'partypad:avatar'; // y el avatar, si sigue libre
+const CLAVE_AVATAR = 'partypad:avatar'; // y el avatar y el color, si siguen libres
+const CLAVE_COLOR = 'partypad:color';
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +19,8 @@ let yo = null; // { id, name, color, avatar } cuando ya está dentro de una sala
 let salaPendiente = normalizar(new URLSearchParams(location.search).get('sala'));
 let ocupados = new Set();
 let avatarElegido = null;
+let colorElegido = null;
+let coloresOcupados = new Set();
 let pulsado = false;
 let medicion = null; // medición del sensor mientras se juega un minijuego de agitar o inclinar
 
@@ -112,6 +115,7 @@ function alRecibir(msg) {
       if (msg.state !== 'lobby') return errorCodigo('La partida de esta sala ya ha empezado', msg.code);
       if (msg.full) return errorCodigo('La sala está llena', msg.code);
       ocupados = new Set(msg.takenAvatars);
+      coloresOcupados = new Set(msg.takenColors);
       if (document.body.dataset.vista === 'perfil') pintarPaleta();
       else abrirPerfil(msg.code);
       break;
@@ -134,8 +138,8 @@ function alRecibir(msg) {
 
     case 'join_error':
       $('unirme').disabled = false;
-      if (msg.reason === 'avatar_taken') {
-        $('error-perfil').textContent = 'Alguien acaba de coger ese avatar. Elige otro.';
+      if (msg.reason === 'avatar_taken' || msg.reason === 'color_taken') {
+        $('error-perfil').textContent = `Alguien acaba de coger ese ${msg.reason === 'avatar_taken' ? 'avatar' : 'color'}. Elige otro.`;
         pedirInfo(salaPendiente);
       } else if (msg.reason === 'invalid_name') {
         $('error-perfil').textContent = 'Escribe un nombre';
@@ -290,19 +294,48 @@ function crearPaleta() {
     return label;
   });
   $('avatares').replaceChildren(...etiquetas);
+
+  const colores = COLORES.map(({ nombre, hex }, i) => {
+    const label = document.createElement('label');
+    label.title = nombre;
+    label.style.setProperty('--color', hex);
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'color';
+    input.value = i;
+    input.setAttribute('aria-label', nombre);
+    input.addEventListener('change', () => elegirColor(i));
+    label.append(input);
+    return label;
+  });
+  $('colores').replaceChildren(...colores);
+}
+
+// Elige lo guardado de la última vez si sigue libre; si no, uno libre al azar.
+function libreOGuardado(total, ocupadosAhora, clave) {
+  const libres = Array.from({ length: total }, (_, i) => i).filter((i) => !ocupadosAhora.has(i));
+  const anterior = guardado.leer(clave);
+  if (Number.isInteger(anterior) && libres.includes(anterior)) return anterior;
+  return libres.length ? libres[Math.floor(Math.random() * libres.length)] : null;
 }
 
 // Avatares libres: si el elegido (o el de la última vez) lo ha cogido otro, se elige uno libre al azar.
 function pintarPaleta() {
   const inputs = $('avatares').querySelectorAll('input');
   inputs.forEach((input, i) => (input.disabled = ocupados.has(i)));
-  if (avatarElegido === null || ocupados.has(avatarElegido)) {
-    const guardado_ = guardado.leer(CLAVE_AVATAR);
-    const libres = AVATARES.map((_, i) => i).filter((i) => !ocupados.has(i));
-    const preferido = Number.isInteger(guardado_) && libres.includes(guardado_) ? guardado_ : null;
-    elegirAvatar(preferido ?? (libres.length ? libres[Math.floor(Math.random() * libres.length)] : null));
-  }
+  if (avatarElegido === null || ocupados.has(avatarElegido)) elegirAvatar(libreOGuardado(AVATARES.length, ocupados, CLAVE_AVATAR));
   if (avatarElegido !== null) inputs[avatarElegido].checked = true;
+
+  const colores = $('colores').querySelectorAll('input');
+  colores.forEach((input, i) => (input.disabled = coloresOcupados.has(i)));
+  if (colorElegido === null || coloresOcupados.has(colorElegido)) elegirColor(libreOGuardado(COLORES.length, coloresOcupados, CLAVE_COLOR));
+  if (colorElegido !== null) colores[colorElegido].checked = true;
+}
+
+function elegirColor(i) {
+  colorElegido = i;
+  ponerColor(i);
+  $('error-perfil').textContent = '';
 }
 
 function elegirAvatar(i) {
@@ -330,16 +363,17 @@ $('form-perfil').addEventListener('submit', (e) => {
     $('error-perfil').textContent = 'Escribe un nombre';
     return;
   }
-  if (avatarElegido === null) {
-    $('error-perfil').textContent = 'Elige un avatar';
+  if (avatarElegido === null || colorElegido === null) {
+    $('error-perfil').textContent = avatarElegido === null ? 'Elige un avatar' : 'Elige un color';
     return;
   }
   guardado.guardar(CLAVE_NOMBRE, name);
   guardado.guardar(CLAVE_AVATAR, avatarElegido);
+  guardado.guardar(CLAVE_COLOR, colorElegido);
   // El envío del formulario es un toque: buen momento para que iOS pida el permiso de movimiento.
   pedirPermiso();
   $('unirme').disabled = true;
-  enviar({ type: 'join_room', code: salaPendiente, name, avatar: avatarElegido });
+  enviar({ type: 'join_room', code: salaPendiente, name, avatar: avatarElegido, color: colorElegido });
 });
 
 // Espera

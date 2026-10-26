@@ -13,9 +13,10 @@ export class Minijuego {
   static id = '';
   static nombre = '';
   static instrucciones = '';
-  static control = ''; // qué muestra el mando: 'agitar', 'inclinar' o 'tocar'
+  static control = ''; // qué muestra el mando: 'agitar', 'inclinar', 'tocar', 'opciones' o 'apuntar'
   static duracion = 30_000; // en ms; la ronda termina antes si terminado() lo dice
   static envio = 100; // ms entre state_update a la pantalla
+  static reloj = true; // false para que la pantalla no enseñe el tiempo que queda (el Cronómetro)
 
   // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador.
   constructor(ids, { vibrar, avisar }) {
@@ -28,7 +29,7 @@ export class Minijuego {
   }
 
   static info() {
-    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control };
+    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control, clock: this.reloj };
   }
 
   get restante() {
@@ -42,6 +43,11 @@ export class Minijuego {
 
   terminado() {
     return this.tiempo >= this.limite;
+  }
+
+  // Un mensaje para el mando de cada jugador de la ronda.
+  avisarTodos(msg) {
+    for (const id of this.ids) this.avisar(id, msg);
   }
 
   // Entradas ya decodificadas de shared/protocol.js: { type: 'shake', intensity }, { type: 'tilt', x, y }…

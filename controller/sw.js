@@ -19,6 +19,8 @@ const ARCHIVOS = [
   '/shared/base.css',
   '/shared/protocol.js',
   '/shared/colores.js',
+  '/shared/avatares.js',
+  '/shared/opciones.js',
   '/shared/icono.svg',
   '/shared/icono-192.png',
 ];

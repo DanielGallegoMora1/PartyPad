@@ -32,7 +32,7 @@
       <ol class="pasos">
         <li><strong>1</strong> Crea la partida en esta pantalla</li>
         <li><strong>2</strong> Cada jugador escanea el QR con su móvil</li>
-        <li><strong>3</strong> Hasta 8 jugadores, sin instalar nada</li>
+        <li><strong>3</strong> Hasta 16 jugadores, sin instalar nada</li>
       </ol>
     </div>
   </section>
@@ -52,7 +52,7 @@
       <div class="tarjeta jugadores">
         <div class="cabecera">
           <h2>Jugadores</h2>
-          <span id="contador" class="contador">0 / 8</span>
+          <span id="contador" class="contador">0 / 16</span>
         </div>
         <ul id="lista" class="lista"></ul>
         <div class="minijuegos">
@@ -60,6 +60,7 @@
           <ul id="minijuegos" class="chips"></ul>
         </div>
         <div class="acciones">
+          <label class="rondas">Rondas <select id="rondas"></select></label>
           <button id="empezar" class="boton boton-grande" type="button" disabled>Empezar partida</button>
           <p id="pista-empezar" class="pista-empezar"></p>
         </div>

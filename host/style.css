@@ -306,6 +306,50 @@ body[data-vista='partida'] .vista-partida {
   from { opacity: 0; transform: scale(0.6); }
 }
 
+/* Con más de 8 huecos, tarjetas en fila (avatar a la izquierda) para que quepan 16 */
+.lista.muchos {
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  grid-auto-rows: minmax(3.6rem, auto);
+  gap: 0.6rem;
+}
+
+.lista.muchos .jugador,
+.lista.muchos .hueco {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+}
+
+.lista.muchos .avatar {
+  width: 2.6rem;
+  font-size: 1.4rem;
+  flex: none;
+}
+
+.lista.muchos .estado-jugador {
+  display: none;
+}
+
+/* Selector de rondas, encima de Empezar partida */
+.rondas {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.rondas select {
+  font: 600 1rem var(--fuente);
+  color: var(--texto);
+  background: var(--fondo-2);
+  border: 1px solid var(--tarjeta-borde);
+  border-radius: 0.7rem;
+  padding: 0.35rem 0.6rem;
+}
+
 /* Botón para silenciar, siempre a mano en una esquina */
 
 .boton-sonido {
@@ -588,6 +632,10 @@ body[data-vista='partida'] .vista-partida {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition: color 0.2s, border-color 0.2s;
+}
+
+.sin-reloj .reloj {
+  visibility: hidden;
 }
 
 .apurado .reloj {

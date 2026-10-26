@@ -22,6 +22,7 @@ body[data-vista='cuenta'] .vista-cuenta,
 body[data-vista='agitar'] .vista-agitar,
 body[data-vista='inclinar'] .vista-inclinar,
 body[data-vista='apuntar'] .vista-apuntar,
+body[data-vista='opciones'] .vista-opciones,
 body[data-vista='meta'] .vista-meta,
 body[data-vista='resultados'] .vista-resultados,
 body[data-vista='podio'] .vista-podio,
@@ -159,18 +160,26 @@ legend {
 
 .paleta {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
 }
 
 .paleta label {
   position: relative;
+  display: grid;
+  place-items: center;
   aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--color);
+  border-radius: 1rem;
+  background: var(--fondo-2);
+  border: 1px solid var(--tarjeta-borde);
+  font-size: 1.8rem;
+  line-height: 1;
   cursor: pointer;
-  box-shadow: inset 0 -0.25rem 0 rgb(0 0 0 / 0.18);
-  transition: transform 0.15s;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.paleta label:has(input:checked) {
+  background: color-mix(in srgb, var(--acento) 35%, var(--fondo-2));
 }
 
 .paleta input {
@@ -191,7 +200,7 @@ legend {
   outline-offset: 6px;
 }
 
-/* Colores ya cogidos por otro jugador */
+/* Avatares ya cogidos por otro jugador */
 .paleta label:has(input:disabled) {
   opacity: 0.2;
   cursor: not-allowed;
@@ -261,6 +270,7 @@ body[data-vista='cuenta'] .jugador-partida,
 body[data-vista='agitar'] .jugador-partida,
 body[data-vista='inclinar'] .jugador-partida,
 body[data-vista='apuntar'] .jugador-partida,
+body[data-vista='opciones'] .jugador-partida,
 body[data-vista='meta'] .jugador-partida,
 body[data-vista='partida'] .jugador-partida,
 body[data-vista='resultados'] .jugador-partida,
@@ -446,6 +456,90 @@ body[data-vista='apuntar'] .vista-apuntar {
 
 .vista-apuntar .boton-secundario {
   flex: none;
+}
+
+/* Opciones: 4 botones de colores con forma, en cuadrícula de 2 × 2 (Quiz y Colores) */
+
+.opciones {
+  width: min(100%, 26rem);
+  flex: 1 1 auto;
+  max-height: 60vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.opcion {
+  border: none;
+  border-radius: 1.2rem;
+  background: var(--color);
+  color: #fff;
+  font-size: 3.2rem;
+  box-shadow: 0 0.4rem 0 color-mix(in srgb, var(--color) 60%, #000);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.06s, opacity 0.2s, filter 0.2s;
+}
+
+.opcion:active:not(:disabled) {
+  transform: translateY(0.3rem);
+  box-shadow: none;
+}
+
+.opcion:disabled {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+}
+
+.opcion.elegida {
+  opacity: 1;
+  filter: none;
+  outline: 4px solid #fff;
+  outline-offset: 3px;
+}
+
+.opciones-estado {
+  min-height: 2.6em;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.opciones-estado.bien,
+.toque-estado.bien {
+  color: var(--exito);
+}
+
+.opciones-estado.mal {
+  color: var(--peligro);
+}
+
+.toque-estado.contador {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--jugador);
+}
+
+/* Avisos del minijuego en las vistas que no tienen sitio propio */
+.pista-juego {
+  position: fixed;
+  left: 50%;
+  top: max(4rem, calc(env(safe-area-inset-top) + 3rem));
+  translate: -50% 0;
+  max-width: calc(100% - 2rem);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: var(--tarjeta);
+  border: 1px solid var(--tarjeta-borde);
+  font-weight: 600;
+  text-align: center;
+  z-index: 3;
+}
+
+.pista-juego.mal {
+  border-color: var(--peligro);
+  color: var(--peligro);
 }
 
 /* Meta */

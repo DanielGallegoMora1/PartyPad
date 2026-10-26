@@ -139,7 +139,7 @@ class Bot {
       }
       this.alRecibir(JSON.parse(data));
     });
-    json(this.s, { type: 'join_room', code, name: this.nombre, color: this.i });
+    json(this.s, { type: 'join_room', code, name: this.nombre, avatar: this.i });
     await new Promise((r) => (this.unido = r));
   }
 
@@ -166,7 +166,7 @@ class Bot {
         this.parar();
         break;
       case 'round_start':
-        this.empezar(msg.minigame.control);
+        this.empezar(msg.minigame.control, msg.minigame.id);
         break;
       case 'reflex_wait':
         this.pulsadoEnSenal = false;
@@ -192,12 +192,44 @@ class Bot {
     this.binario(datos);
   }
 
-  empezar(control) {
+  empezar(control, juego) {
     this.parar();
     this.muestras = { tomadas: 0, enviadas: 0 };
     if (control === 'agitar') this.agitar();
-    else if (control === 'inclinar') this.inclinar();
+    else if (control === 'inclinar') this.inclinar(juego);
+    else if (juego === 'machaca') this.machacar();
+    else if (juego === 'cronometro') this.cronometrar();
     else if (control === 'tocar') this.tocar();
+    else if (control === 'opciones') this.elegir(juego);
+  }
+
+  // Machaca: entre 6 y 10 toques por segundo.
+  machacar() {
+    const ritmo = 100 + Math.random() * 70;
+    this.timer = setInterval(() => !QUIETO && this.pulsar(), ritmo);
+  }
+
+  // Cronómetro: pulsa una vez cerca de los 7 s (con un error humano de hasta medio segundo).
+  cronometrar() {
+    const cuando = (7 + (Math.random() - 0.5)) * 1000;
+    this.timer = setTimeout(() => this.pulsar(), cuando);
+  }
+
+  // Quiz y Colores: responde en cada turno. En Colores mira la tinta y acierta casi siempre; en el Quiz, al azar.
+  elegir(juego) {
+    let turno = -1;
+    this.timer = setInterval(() => {
+      const e = vista.estado;
+      if (!e || e.phase !== 'pregunta' || e.turn === turno) return;
+      turno = e.turn;
+      const acierta = juego === 'colores' && Math.random() < 0.8;
+      const opcion = acierta ? e.ink : Math.floor(Math.random() * 4);
+      const espera = juego === 'colores' ? 400 + Math.random() * 1200 : 1000 + Math.random() * 4000;
+      setTimeout(() => {
+        this.binario(encodeButton(this.id, opcion, true));
+        setTimeout(() => this.binario(encodeButton(this.id, opcion, false)), 60);
+      }, espera);
+    }, 50);
   }
 
   agitar() {
@@ -214,16 +246,16 @@ class Bot {
     }, 50);
   }
 
-  inclinar() {
+  inclinar(juego) {
     let enviado = { x: 0, y: 0 };
     let anterior = null;
     this.timer = setInterval(() => {
       const yo = vista.estado?.players?.find((p) => p.id === this.id);
-      if (!yo || !vista.setup) return;
+      if (!yo || !vista.setup || yo.out) return;
       let x = 0;
       let y = 0;
       if (!QUIETO) {
-        const destino = siguienteCelda(vista.setup, yo);
+        const destino = juego === 'sumo' ? destinoSumo(yo) : juego === 'esquiva' ? destinoEsquiva(yo) : siguienteCelda(vista.setup, yo);
         // Hacia el centro de la siguiente celda, frenando con la velocidad que lleva (control PD).
         const v = anterior ? { x: (yo.x - anterior.x) / 0.033, y: (yo.y - anterior.y) / 0.033 } : { x: 0, y: 0 };
         x = Math.max(-1, Math.min(1, (destino.x - yo.x) * 1.6 - v.x * 0.25 + (Math.random() - 0.5) * 0.1));
@@ -272,6 +304,28 @@ class Bot {
     this.binario(encodeButton(this.id, 0, true));
     setTimeout(() => this.binario(encodeButton(this.id, 0, false)), 80);
   }
+}
+
+// Sumo: hacia el rival más cercano, salvo si está cerca del borde, que vuelve al centro.
+function destinoSumo(yo) {
+  const { radius, players } = vista.estado;
+  if (Math.hypot(yo.x, yo.y) > radius * 0.7) return { x: 0, y: 0 };
+  const rivales = players.filter((p) => p.id !== yo.id && !p.out);
+  if (!rivales.length) return { x: 0, y: 0 };
+  const cerca = rivales.sort((a, b) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(b.x - yo.x, b.y - yo.y))[0];
+  return { x: cerca.x, y: cerca.y };
+}
+
+// Esquiva: se aparta del meteorito más cercano que le vaya a caer encima; si no, vuelve hacia el centro.
+function destinoEsquiva(yo) {
+  const { meteors = [] } = vista.estado;
+  const { width, height } = vista.setup;
+  const peligro = meteors.find((m) => Math.hypot(m.x - yo.x, m.y - yo.y) < m.r + 1);
+  if (!peligro) return { x: width / 2, y: height / 2 };
+  const dx = yo.x - peligro.x || 0.1;
+  const dy = yo.y - peligro.y || 0.1;
+  const d = Math.hypot(dx, dy);
+  return { x: yo.x + (dx / d) * 3, y: yo.y + (dy / d) * 3 };
 }
 
 // Siguiente celda del camino más corto hasta la meta, con las paredes del escenario.

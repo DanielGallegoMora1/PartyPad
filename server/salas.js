@@ -1,12 +1,13 @@
-// Salas de PartyPad: cada pantalla crea una sala con un código de 4 letras y hasta 8 jugadores.
+// Salas de PartyPad: cada pantalla crea una sala con un código de 4 letras y hasta 16 jugadores.
 // Los eventos de sala van en JSON (ver docs/03-protocolo.md).
 import { randomUUID } from 'node:crypto';
 import { COLORES } from '../shared/colores.js';
+import { AVATARES } from '../shared/avatares.js';
 import { decode, encodeVibrate } from '../shared/protocol.js';
 import { Partida } from './partida.js';
 import { minijuegosPartida } from './minijuegos/index.js';
 
-export const MAX_JUGADORES = 8;
+export const MAX_JUGADORES = COLORES.length; // 16: cada jugador tiene un color distinto
 const MAX_NOMBRE = 16; // en caracteres
 const ESPERA_JUGADOR = 30_000; // para reconectarse antes de perder el sitio en el lobby
 const ESPERA_PANTALLA = 10 * 60_000; // sin pantalla, la sala se cierra
@@ -35,7 +36,7 @@ export function crearSala() {
 export const buscarSala = (code) => salas.get(String(code ?? '').toUpperCase());
 
 // Lo que pueden ver la pantalla y los mandos de un jugador: sin token ni socket.
-const publico = (j) => ({ id: j.id, name: j.name, color: j.color, connected: j.socket !== null });
+const publico = (j) => ({ id: j.id, name: j.name, color: j.color, avatar: j.avatar, connected: j.socket !== null });
 
 function limpiarNombre(name) {
   return typeof name === 'string' ? [...name.trim()].slice(0, MAX_NOMBRE).join('') : '';
@@ -48,8 +49,8 @@ export class Sala {
     this.host = null;
     this.state = 'lobby'; // lobby | jugando
     this.partida = null;
-    this.jugadores = new Map(); // id → { id, name, color, token, socket, timer }
-    this.observadores = new Set(); // mandos que eligen nombre y color, para avisarles de los colores libres
+    this.jugadores = new Map(); // id → { id, name, color, avatar, token, socket, timer }
+    this.observadores = new Set(); // mandos que eligen nombre y avatar, para avisarles de los avatares libres
     this.packs = new Set(); // ids de los packs que la pantalla tiene descargados
     this.timerCierre = null;
   }
@@ -65,7 +66,7 @@ export class Sala {
       exists: true,
       state: this.state,
       full: this.jugadores.size >= MAX_JUGADORES,
-      takenColors: [...this.jugadores.values()].map((j) => j.color),
+      takenAvatars: [...this.jugadores.values()].map((j) => j.avatar),
     };
   }
 
@@ -117,13 +118,13 @@ export class Sala {
   }
 
   // Desde el lobby o, para jugar otra vez, desde el podio.
-  empezar() {
+  empezar(rondas) {
     const enPodio = this.partida?.fase === 'podio';
     if ((this.state !== 'lobby' && !enPodio) || this.jugadores.size < 2) return;
     if (minijuegosPartida(this.packs).length === 0) return;
     this.partida?.parar();
     this.state = 'jugando';
-    this.partida = new Partida(this);
+    this.partida = new Partida(this, rondas);
     this.partida.empezar();
     this.avisarObservadores();
   }
@@ -173,17 +174,20 @@ export class Sala {
     socket.observando = null;
   }
 
-  unir(socket, name, color) {
+  // El jugador elige nombre y avatar; el color se lo da el servidor (el primero libre).
+  unir(socket, name, avatar) {
     if (this.state !== 'lobby') return { error: 'started' };
     if (this.jugadores.size >= MAX_JUGADORES) return { error: 'full' };
     name = limpiarNombre(name);
     if (!name) return { error: 'invalid_name' };
-    if (!Number.isInteger(color) || color < 0 || color >= COLORES.length) return { error: 'invalid_color' };
-    if ([...this.jugadores.values()].some((j) => j.color === color)) return { error: 'color_taken' };
+    if (!Number.isInteger(avatar) || avatar < 0 || avatar >= AVATARES.length) return { error: 'invalid_avatar' };
+    const otros = [...this.jugadores.values()];
+    if (otros.some((j) => j.avatar === avatar)) return { error: 'avatar_taken' };
+    const color = COLORES.findIndex((_, i) => !otros.some((j) => j.color === i));
 
     let id = 1;
     while (this.jugadores.has(id)) id++;
-    const j = { id, name, color, token: randomUUID(), socket, timer: null };
+    const j = { id, name, color, avatar, token: randomUUID(), socket, timer: null };
     this.jugadores.set(id, j);
     this.dejarDeObservar(socket);
     socket.sala = this;

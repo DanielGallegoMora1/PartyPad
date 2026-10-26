@@ -143,7 +143,7 @@ export class Laberinto extends Phaser.Scene {
       this.add.circle(0, 0, r, c.color),
       this.add.circle(-r * 0.35, -r * 0.38, r * 0.3, 0xffffff, 0.35),
       this.add
-        .text(0, 0, inicial(c.name), { fontFamily: 'Fredoka', fontSize: `${Math.round(r * 1.05)}px`, fontStyle: '700', color: TEXTO_OSCURO })
+        .text(0, 0, c.emoji ?? inicial(c.name), { fontFamily: 'Fredoka', fontSize: `${Math.round(r * 1.05)}px`, fontStyle: '700', color: TEXTO_OSCURO })
         .setOrigin(0.5),
     ]);
     c.ficha.setVisible(!c.puesto && c.x !== null);
@@ -169,7 +169,7 @@ export class Laberinto extends Phaser.Scene {
         .setOrigin(0.5);
       const bola = this.add.circle(x + s * 0.25, y, s * 0.42, c.color);
       const letra = this.add
-        .text(x + s * 0.25, y, inicial(c.name), { fontFamily: 'Fredoka', fontSize: `${Math.round(s * 0.42)}px`, fontStyle: '700', color: TEXTO_OSCURO })
+        .text(x + s * 0.25, y, c.emoji ?? inicial(c.name), { fontFamily: 'Fredoka', fontSize: `${Math.round(s * 0.42)}px`, fontStyle: '700', color: TEXTO_OSCURO })
         .setOrigin(0.5);
       this.objetos.push(medalla, puesto, bola, letra);
     });

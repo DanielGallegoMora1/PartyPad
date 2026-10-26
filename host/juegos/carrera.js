@@ -190,7 +190,7 @@ export class Carrera extends Phaser.Scene {
     g.fillStyle(VENTANA).fillCircle(0, -h * 0.04, w * 0.26);
 
     const letra = this.add
-      .text(0, -h * 0.04, inicial(c.name), {
+      .text(0, -h * 0.04, c.emoji ?? inicial(c.name), {
         fontFamily: 'Fredoka',
         fontSize: `${Math.round(w * 0.34)}px`,
         fontStyle: '700',

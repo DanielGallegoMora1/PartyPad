@@ -1,20 +1,23 @@
 // Mando de PartyPad: se abre en el móvil al escanear el QR.
-// Flujo: código de sala → nombre y color → espera en el lobby → partida.
+// Flujo: código de sala → nombre y avatar → espera en el lobby → partida.
 // En la partida, cada ronda: instrucciones → cuenta atrás → control del minijuego → resultados. Al final, podio.
 import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
+import { AVATARES } from '/shared/avatares.js';
+import { OPCIONES } from '/shared/opciones.js';
 import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
 const CLAVE_NOMBRE = 'partypad:nombre'; // para no tener que escribirlo cada vez
+const CLAVE_AVATAR = 'partypad:avatar'; // y el avatar, si sigue libre
 
 const $ = (id) => document.getElementById(id);
 
 let socket = null;
-let yo = null; // { id, name, color } cuando ya está dentro de una sala
+let yo = null; // { id, name, color, avatar } cuando ya está dentro de una sala
 let salaPendiente = normalizar(new URLSearchParams(location.search).get('sala'));
 let ocupados = new Set();
-let colorElegido = null;
+let avatarElegido = null;
 let pulsado = false;
 let medicion = null; // medición del sensor mientras se juega un minijuego de agitar o inclinar
 
@@ -45,10 +48,12 @@ function normalizar(code) {
 }
 
 const enviar = (msg) => socket?.readyState === WebSocket.OPEN && socket.send(JSON.stringify(msg));
-const inicial = (nombre) => [...nombre.trim()][0]?.toUpperCase() ?? '?';
+const emoji = (indice) => AVATARES[indice]?.emoji ?? '?';
 
 function mostrar(vista) {
   document.body.dataset.vista = vista;
+  // La franja de avisos del minijuego solo tiene sentido mientras se juega.
+  if (!['agitar', 'inclinar', 'apuntar', 'meta'].includes(vista)) pista(null);
 }
 
 function ponerColor(indice) {
@@ -106,7 +111,7 @@ function alRecibir(msg) {
       if (!msg.exists) return errorCodigo('No hay ninguna sala con ese código', msg.code);
       if (msg.state !== 'lobby') return errorCodigo('La partida de esta sala ya ha empezado', msg.code);
       if (msg.full) return errorCodigo('La sala está llena', msg.code);
-      ocupados = new Set(msg.takenColors);
+      ocupados = new Set(msg.takenAvatars);
       if (document.body.dataset.vista === 'perfil') pintarPaleta();
       else abrirPerfil(msg.code);
       break;
@@ -117,10 +122,10 @@ function alRecibir(msg) {
       guardado.guardar(CLAVE_SESION, { code: msg.code, token: msg.token });
       urlSala(msg.code);
       ponerColor(yo.color);
-      $('espera-avatar').textContent = inicial(yo.name);
+      $('espera-avatar').textContent = emoji(yo.avatar);
       $('espera-nombre').textContent = yo.name;
       $('espera-sala').textContent = msg.code;
-      $('partida-avatar').textContent = inicial(yo.name);
+      $('partida-avatar').textContent = emoji(yo.avatar);
       $('partida-nombre').textContent = yo.name;
       $('aviso-pantalla').hidden = msg.hostConnected;
       // A mitad de partida, el servidor manda justo después la fase en la que está.
@@ -129,8 +134,8 @@ function alRecibir(msg) {
 
     case 'join_error':
       $('unirme').disabled = false;
-      if (msg.reason === 'color_taken') {
-        $('error-perfil').textContent = 'Alguien acaba de coger ese color. Elige otro.';
+      if (msg.reason === 'avatar_taken') {
+        $('error-perfil').textContent = 'Alguien acaba de coger ese avatar. Elige otro.';
         pedirInfo(salaPendiente);
       } else if (msg.reason === 'invalid_name') {
         $('error-perfil').textContent = 'Escribe un nombre';
@@ -164,7 +169,7 @@ function alRecibir(msg) {
       break;
 
     case 'round_start':
-      empezarControl(msg.minigame.control);
+      empezarControl(msg.minigame);
       break;
 
     case 'finished':
@@ -177,6 +182,10 @@ function alRecibir(msg) {
 
     case 'reaction':
       alReaccionar(msg);
+      break;
+
+    case 'hint':
+      alPista(msg);
       break;
 
     case 'round_end':
@@ -217,7 +226,7 @@ function salirDeLaSala(olvidarSala) {
   soltarPantalla();
   guardado.borrar(CLAVE_SESION);
   yo = null;
-  ponerColor(colorElegido);
+  ponerColor(null);
   $('aviso-pantalla').hidden = true;
   if (olvidarSala) {
     salaPendiente = null;
@@ -264,38 +273,41 @@ $('form-codigo').addEventListener('submit', (e) => {
   pedirInfo(code);
 });
 
-// Nombre y color
+// Nombre y avatar
 
 function crearPaleta() {
-  const etiquetas = COLORES.map(({ nombre, hex }, i) => {
+  const etiquetas = AVATARES.map(({ nombre, emoji }, i) => {
     const label = document.createElement('label');
-    label.style.setProperty('--color', hex);
     label.title = nombre;
+    label.textContent = emoji;
     const input = document.createElement('input');
     input.type = 'radio';
-    input.name = 'color';
+    input.name = 'avatar';
     input.value = i;
     input.setAttribute('aria-label', nombre);
-    input.addEventListener('change', () => elegirColor(i));
+    input.addEventListener('change', () => elegirAvatar(i));
     label.append(input);
     return label;
   });
-  $('colores').replaceChildren(...etiquetas);
+  $('avatares').replaceChildren(...etiquetas);
 }
 
+// Avatares libres: si el elegido (o el de la última vez) lo ha cogido otro, se elige uno libre al azar.
 function pintarPaleta() {
-  const inputs = $('colores').querySelectorAll('input');
+  const inputs = $('avatares').querySelectorAll('input');
   inputs.forEach((input, i) => (input.disabled = ocupados.has(i)));
-  if (colorElegido === null || ocupados.has(colorElegido)) {
-    const libre = COLORES.findIndex((_, i) => !ocupados.has(i));
-    elegirColor(libre === -1 ? null : libre);
+  if (avatarElegido === null || ocupados.has(avatarElegido)) {
+    const guardado_ = guardado.leer(CLAVE_AVATAR);
+    const libres = AVATARES.map((_, i) => i).filter((i) => !ocupados.has(i));
+    const preferido = Number.isInteger(guardado_) && libres.includes(guardado_) ? guardado_ : null;
+    elegirAvatar(preferido ?? (libres.length ? libres[Math.floor(Math.random() * libres.length)] : null));
   }
-  if (colorElegido !== null) inputs[colorElegido].checked = true;
+  if (avatarElegido !== null) inputs[avatarElegido].checked = true;
 }
 
-function elegirColor(i) {
-  colorElegido = i;
-  ponerColor(i);
+function elegirAvatar(i) {
+  avatarElegido = i;
+  $('vista-previa').textContent = i === null ? '?' : emoji(i);
   $('error-perfil').textContent = '';
 }
 
@@ -304,16 +316,12 @@ function abrirPerfil(code) {
   $('error-perfil').textContent = '';
   $('unirme').disabled = false;
   if (!$('campo-nombre').value) $('campo-nombre').value = guardado.leer(CLAVE_NOMBRE) ?? '';
-  $('vista-previa').textContent = inicial($('campo-nombre').value);
   urlSala(code);
   pintarPaleta();
   mostrar('perfil');
 }
 
-$('campo-nombre').addEventListener('input', (e) => {
-  $('vista-previa').textContent = inicial(e.target.value);
-  $('error-perfil').textContent = '';
-});
+$('campo-nombre').addEventListener('input', () => ($('error-perfil').textContent = ''));
 
 $('form-perfil').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -322,15 +330,16 @@ $('form-perfil').addEventListener('submit', (e) => {
     $('error-perfil').textContent = 'Escribe un nombre';
     return;
   }
-  if (colorElegido === null) {
-    $('error-perfil').textContent = 'Elige un color';
+  if (avatarElegido === null) {
+    $('error-perfil').textContent = 'Elige un avatar';
     return;
   }
   guardado.guardar(CLAVE_NOMBRE, name);
+  guardado.guardar(CLAVE_AVATAR, avatarElegido);
   // El envío del formulario es un toque: buen momento para que iOS pida el permiso de movimiento.
   pedirPermiso();
   $('unirme').disabled = true;
-  enviar({ type: 'join_room', code: salaPendiente, name, color: colorElegido });
+  enviar({ type: 'join_room', code: salaPendiente, name, avatar: avatarElegido });
 });
 
 // Espera
@@ -344,7 +353,7 @@ $('salir').addEventListener('click', () => {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷' };
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 let fin = 0; // performance.now() en que acaba la fase actual
 let ultimaCuenta = null;
@@ -398,6 +407,7 @@ function alIntro(msg) {
   $('instr-nombre').textContent = minigame.name;
   $('instr-texto').textContent = minigame.instructions;
   pintarPermiso(minigame.control);
+  pista(null);
   mostrar('instrucciones');
 }
 
@@ -426,18 +436,92 @@ $('activar-movimiento').addEventListener('click', async () => {
 
 const enviarBinario = (datos) => yo && socket.readyState === WebSocket.OPEN && socket.send(datos);
 
-function empezarControl(control) {
+let juegoActual = null; // id del minijuego de la ronda
+let toques = 0; // en Machaca, el mando cuenta sus propias pulsaciones
+
+function empezarControl({ control, id }) {
   pararMedicion();
+  pista(null);
+  juegoActual = id;
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
   else if (control === 'apuntar') empezarApuntar();
+  else if (control === 'opciones') empezarOpciones();
   else empezarToque();
+}
+
+// Avisos del minijuego (hint): título, texto, si ha ido bien o mal y si se bloquean los botones.
+// En las vistas de tocar y de opciones van dentro de la vista; en las demás, en una franja arriba.
+function alPista({ title = '', text = '', mood = '', lock }) {
+  const vista = document.body.dataset.vista;
+  if (vista === 'partida') {
+    $('toque-senal').textContent = title;
+    const estado = $('toque-estado');
+    estado.textContent = text;
+    estado.className = `toque-estado ${mood}`;
+    if (lock !== undefined) boton.classList.toggle('usado', lock);
+  } else if (vista === 'opciones') {
+    $('opciones-titulo').textContent = title;
+    const estado = $('opciones-estado');
+    estado.textContent = text;
+    estado.className = `opciones-estado ${mood}`;
+    if (lock === false) bloquearOpciones(false);
+    if (lock === true) bloquearOpciones(true);
+  } else {
+    pista([title, text].filter(Boolean).join(' · '), mood);
+  }
+}
+
+function pista(texto, mood = '') {
+  const el = $('pista-juego');
+  el.hidden = !texto;
+  el.textContent = texto ?? '';
+  el.className = `pista-juego ${mood}`;
+}
+
+// Opciones: 4 botones con el color y la forma de las respuestas de la pantalla (Quiz y Colores).
+function empezarOpciones() {
+  $('opciones-titulo').textContent = '';
+  $('opciones-estado').textContent = 'Mira la pantalla grande';
+  $('opciones-estado').className = 'opciones-estado';
+  bloquearOpciones(true);
+  mostrar('opciones');
+}
+
+function bloquearOpciones(si) {
+  for (const b of document.querySelectorAll('.opcion')) {
+    b.disabled = si;
+    if (!si) b.classList.remove('elegida');
+  }
+}
+
+function crearOpciones() {
+  const botones = OPCIONES.map(({ nombre, hex, forma }, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'opcion';
+    b.style.setProperty('--color', hex);
+    b.textContent = forma;
+    b.setAttribute('aria-label', nombre);
+    b.addEventListener('pointerdown', () => {
+      if (b.disabled || !yo) return;
+      enviarBinario(encodeButton(yo.id, i, true));
+      enviarBinario(encodeButton(yo.id, i, false));
+      bloquearOpciones(true);
+      b.classList.add('elegida');
+    });
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+    return b;
+  });
+  $('opciones').replaceChildren(...botones);
 }
 
 // Tocar: un botón grande. En Reflejos, el servidor avisa de cada señal y responde con el tiempo de cada pulsación.
 function empezarToque() {
   $('toque-senal').textContent = '';
   pintarToque('', '');
+  toques = 0;
+  if (juegoActual === 'machaca') pintarToque('0', 'contador');
   mostrar('partida');
 }
 
@@ -445,7 +529,7 @@ function pintarToque(texto, clase) {
   const estado = $('toque-estado');
   estado.textContent = texto;
   estado.className = `toque-estado ${clase}`;
-  boton.classList.toggle('usado', clase !== '');
+  boton.classList.toggle('usado', clase !== '' && clase !== 'contador');
 }
 
 function alEsperarSenal(msg) {
@@ -600,6 +684,7 @@ function pulsar(e) {
   boton.setPointerCapture?.(e.pointerId);
   boton.classList.add('pulsado');
   enviarBoton(true);
+  if (juegoActual === 'machaca' && document.body.dataset.vista === 'partida') pintarToque(String(++toques), 'contador');
 }
 
 function soltar() {
@@ -615,6 +700,7 @@ boton.addEventListener('pointercancel', soltar);
 boton.addEventListener('contextmenu', (e) => e.preventDefault());
 
 crearPaleta();
+crearOpciones();
 conectar();
 
 // PWA: el Service Worker guarda el mando en caché para que cargue al instante (solo con HTTPS o en localhost).

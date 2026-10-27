@@ -466,6 +466,7 @@ function alPodio(msg) {
   $('podio').replaceChildren(...escalones);
   $('podio-resto').replaceChildren(...ranking.slice(3).map((c, i) => fila(c, undefined, i)));
   ponerFin(msg.ms ?? 0);
+  $('otra-vez').disabled = jugadores.size < MIN_JUGADORES || elegidos().length === 0;
   if (escenario.dataset.fase !== 'podio') sonido.fanfarria();
   fase('podio');
 }
@@ -492,7 +493,9 @@ const empezarPartida_ = () =>
   enviar({ type: 'start_game', rounds: Number($('rondas').value) || undefined, games: elegidos().map((m) => m.id) });
 $('empezar').addEventListener('click', empezarPartida_);
 $('volver').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
-$('otra-vez').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
+// Desde el podio: otra partida con los mismos minijuegos elegidos, o de vuelta al lobby.
+$('otra-vez').addEventListener('click', empezarPartida_);
+$('al-lobby').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
 $('saltar').addEventListener('click', () => enviar({ type: 'skip_round' }));
 $('todos').addEventListener('click', () => {
   quitados = new Set();

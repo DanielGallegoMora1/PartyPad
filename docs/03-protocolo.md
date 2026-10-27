@@ -134,7 +134,7 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 | Cuenta atrás | `countdown` | 3 s |
 | Jugando | `round_start` y, a la pantalla, `state_update` cada 100 ms (50 ms en el Laberinto; en Reflejos, en cuanto cambia algo y si no cada segundo) | Lo que diga el minijuego |
 | Resultados | `round_end` | 8 s |
-| Podio | `podium` (con `ms`) | 15 s; después, todos vuelven al lobby (`back_to_lobby`) |
+| Podio | `podium` (con `ms`) | 20 s; el anfitrión puede jugar otra vez (`start_game`) o volver al lobby; si no, todos vuelven al lobby (`back_to_lobby`) |
 
 Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (botones de colores; el número de botón va en BUTTON) o `apuntar`. Con `opciones`, `options` dice qué botones: `respuestas` (4: el Quiz, Simón dice y ¿Cuántos hay?) o `tintas` (8, Colores), de `shared/opciones.js`; con `multi: true` (Simón dice) los botones no se bloquean tras la primera pulsación. Con `dibujar`, el mando enseña un lienzo (Dibuja). Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
 

@@ -3,6 +3,7 @@
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { PINCELES, GROSORES } from '/shared/opciones.js';
 import { TEXTO, TEXTO_OSCURO, TEXTO_SUAVE, cara, confeti, estilo, jugadoresDe, numero, rejilla, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
 
 const COLORES = PINCELES.map(numero);
 
@@ -107,6 +108,11 @@ export class Dibuja extends Phaser.Scene {
   dibujo(msg) {
     const j = this.jugadores.get(msg.id);
     if (!j) return;
+    // Roce de lápiz, como mucho unas pocas veces por segundo aunque dibujen todos.
+    if (msg.op === 'add' && this.time.now - (this.ultimoRoce ?? 0) > 120) {
+      this.ultimoRoce = this.time.now;
+      sonido.pincel();
+    }
     if (msg.op === 'start') {
       const t = { c: msg.c, w: msg.w, p: [...msg.p] };
       j.trazos.push(t);
@@ -130,6 +136,11 @@ export class Dibuja extends Phaser.Scene {
   actualizar(estado, animar = true) {
     if (estado.phase === undefined) return;
     const llegaResultado = estado.phase === 'resultado' && this.estado.phase !== 'resultado';
+    if (animar && estado.phase === 'votar' && this.estado.phase !== 'votar') sonido.campanilla();
+    if (animar && llegaResultado) {
+      sonido.redoble(1);
+      this.time.delayedCall(1050, () => sonido.fanfarria());
+    }
     this.estado = estado;
     for (const p of estado.players ?? []) {
       const j = this.jugadores.get(p.id);

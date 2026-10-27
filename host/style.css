@@ -865,6 +865,13 @@ body[data-vista='partida'] .vista-partida {
 .escalon[data-puesto='2'] .bloque { height: 8rem; background: #d9d9e8; }
 .escalon[data-puesto='3'] .bloque { height: 5.5rem; background: #e0975a; }
 
+.podio-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
 .podio-resto {
   width: min(100%, 34rem);
 }

@@ -1,5 +1,6 @@
-// Simón dice en la pantalla: los 4 colores en cruz, como el juguete. Mientras se enseña la secuencia, se enciende
-// el color que dice el servidor y suena su tono. Abajo, cada jugador con su avance o eliminado.
+// Simón dice en la pantalla: el juguete clásico, un círculo con los 4 colores en cuadrantes y el centro negro.
+// Mientras se enseña la secuencia, se enciende el cuadrante que dice el servidor y suena su tono. Abajo, cada
+// jugador con su avance o eliminado.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { OPCIONES } from '/shared/opciones.js';
 import { TEXTO, TEXTO_SUAVE, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
@@ -28,25 +29,32 @@ export class Simon extends Phaser.Scene {
     for (const o of this.objetos) o.destroy();
     this.objetos = [];
     const { width, height } = this.scale;
-    // La cruz cabe entre el reloj (arriba) y los jugadores (abajo).
-    const arriba = 110;
+    // El juguete cabe entre el reloj (arriba) y los jugadores (abajo).
+    const arriba = 80;
     const abajo = height * 0.64;
-    const lado = Math.min(width * 0.16, (abajo - arriba) / 3.2);
+    const radio = Math.min(width * 0.22, (abajo - arriba) / 2);
     const cx = width / 2;
     const cy = arriba + (abajo - arriba) / 2;
-    // Arriba, izquierda, derecha y abajo: rojo, azul, amarillo y verde (en el orden de los botones).
-    const sitios = [[0, -1], [-1, 0], [1, 0], [0, 1]];
+    this.juguete = { cx, cy, radio };
+    const caja = this.add.graphics();
+    caja.fillStyle(0x000000, 0.35).fillCircle(cx + 6, cy + 10, radio);
+    caja.fillStyle(0x2a2a33).fillCircle(cx, cy, radio);
+    this.objetos.push(caja);
+    // Cuadrantes en el orden de los botones: arriba a la izquierda, arriba a la derecha, abajo a la izquierda, abajo a la derecha.
+    const angulos = [Math.PI, -Math.PI / 2, Math.PI / 2, 0];
     this.pads = OPCIONES.map((o, i) => {
-      const [dx, dy] = sitios[i];
-      const x = cx + dx * lado * 1.08;
-      const y = cy + dy * lado * 1.08;
-      const fondo = this.add.rectangle(x, y, lado, lado, numero(o.hex)).setAlpha(0.35);
-      fondo.setStrokeStyle(4, 0xffffff, 0.15);
-      const forma = this.add.text(x, y, o.forma, estilo(lado * 0.4, '#ffffff', '700')).setOrigin(0.5).setAlpha(0.5);
-      this.objetos.push(fondo, forma);
-      return { fondo, forma };
+      const g = this.add.graphics();
+      const medio = angulos[i] + Math.PI / 4;
+      const forma = this.add
+        .text(cx + Math.cos(medio) * radio * 0.62, cy + Math.sin(medio) * radio * 0.62, o.forma, estilo(radio * 0.18, '#ffffff', '700'))
+        .setOrigin(0.5);
+      this.objetos.push(g, forma);
+      return { g, forma, color: numero(o.hex), desde: angulos[i] };
     });
-    this.titulo = this.add.text(cx, cy, '', estilo(lado * 0.28, TEXTO, '700')).setOrigin(0.5);
+    const centro = this.add.circle(cx, cy, radio * 0.36, 0x18181f).setStrokeStyle(radio * 0.04, 0x3a3a46);
+    this.titulo = this.add.text(cx, cy - radio * 0.07, 'SIMÓN', estilo(radio * 0.12, '#f7f4ff', '700')).setOrigin(0.5);
+    this.nivel = this.add.text(cx, cy + radio * 0.12, '', estilo(radio * 0.09, '#b9b2d9', '600')).setOrigin(0.5);
+    this.objetos.push(centro, this.nivel);
     this.subtitulo = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
     this.objetos.push(this.titulo, this.subtitulo);
 
@@ -66,14 +74,29 @@ export class Simon extends Phaser.Scene {
   pintar() {
     const e = this.estado;
     if (!this.pads) return;
+    const { cx, cy, radio } = this.juguete;
     this.pads.forEach((p, i) => {
       const encendido = e.lit === i;
-      p.fondo.setAlpha(encendido ? 1 : 0.35).setScale(encendido ? 1.08 : 1);
-      p.fondo.setStrokeStyle(encendido ? 8 : 4, 0xffffff, encendido ? 0.9 : 0.15);
-      p.forma.setAlpha(encendido ? 1 : 0.5);
+      // Cada cuadrante es un sector con un hueco entre ellos; encendido, más claro y con brillo alrededor.
+      const g = p.g;
+      g.clear();
+      const hueco = 0.06;
+      const r = radio * (encendido ? 0.97 : 0.93);
+      if (encendido) {
+        g.fillStyle(p.color, 0.35);
+        g.slice(cx, cy, radio * 1.05, p.desde + hueco, p.desde + Math.PI / 2 - hueco).fillPath();
+      }
+      g.fillStyle(p.color, encendido ? 1 : 0.5);
+      g.slice(cx, cy, r, p.desde + hueco, p.desde + Math.PI / 2 - hueco).fillPath();
+      if (encendido) {
+        g.fillStyle(0xffffff, 0.25);
+        g.slice(cx, cy, r, p.desde + hueco, p.desde + Math.PI / 2 - hueco).fillPath();
+      }
+      p.forma.setAlpha(encendido ? 1 : 0.55);
     });
-    const textos = { mostrar: '¡Mira!', repetir: '¡Repite!', pausa: '' };
-    this.titulo.setText(textos[e.phase] ?? '');
+    const textos = { mostrar: '¡Mira!', repetir: '¡Repite!', pausa: 'SIMÓN' };
+    this.titulo.setText(textos[e.phase] ?? 'SIMÓN');
+    this.nivel.setText(e.level ? `Nivel ${e.level}` : '');
     this.subtitulo.setText(e.level ? `Nivel ${e.level} · ${e.length} colores` : '');
     for (const j of this.jugadores.values()) {
       if (!j.etiqueta) continue;

@@ -1,7 +1,9 @@
-// Esquiva en la pantalla: el campo visto desde arriba. Antes de cada meteorito aparece su sombra, que se oscurece
-// mientras se cierra un anillo rojo; al caer, explota. Las bolas se interpolan entre mensajes del servidor.
+// Esquiva en la pantalla: la superficie de un planeta de noche, vista desde arriba. Cada meteorito se ve caer en
+// diagonal con su cola de fuego mientras su sombra crece en el suelo; al caer, explota y deja un cráter.
+// Las bolas se interpolan entre mensajes del servidor.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
-import { PANEL, TEXTO_SUAVE, estilo, ficha, jugadoresDe, texturas } from './comun.js';
+import { estilo, ficha, jugadoresDe, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
 
 const SUAVIZADO = 15;
 
@@ -13,6 +15,8 @@ export class Esquiva extends Phaser.Scene {
     this.jugadores = jugadoresDe(jugadores, () => ({ x: null, y: null, fuera: false }));
     this.meteoritos = [];
     this.explotados = new Set(); // impactos ya animados
+    this.vistos = new Set(); // meteoritos que ya han sonado al aparecer
+    this.crateres = []; // donde ya ha caído alguno, para dibujarlos al redimensionar
     this.objetos = [];
   }
 
@@ -43,13 +47,25 @@ export class Esquiva extends Phaser.Scene {
     this.ox = (width - this.mapa.width * this.escala) / 2;
     this.oy = reloj + (height - reloj - margen - this.mapa.height * this.escala) / 2;
 
+    // Cielo con estrellas y, encima, el suelo rocoso del planeta.
     const g = this.add.graphics();
-    g.fillStyle(PANEL, 0.95).fillRoundedRect(this.ox, this.oy, this.mapa.width * this.escala, this.mapa.height * this.escala, 16);
-    g.lineStyle(1, 0xffffff, 0.05);
-    for (let x = 1; x < this.mapa.width; x++) g.lineBetween(this.px(x), this.oy, this.px(x), this.py(this.mapa.height));
-    for (let y = 1; y < this.mapa.height; y++) g.lineBetween(this.ox, this.py(y), this.px(this.mapa.width), this.py(y));
+    g.fillGradientStyle(0x070a24, 0x070a24, 0x2a1a4a, 0x2a1a4a, 1).fillRect(0, 0, width, height);
+    let semilla = 7;
+    const azar = () => ((semilla = (semilla * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 120; i++) g.fillStyle(0xffffff, 0.3 + azar() * 0.6).fillCircle(azar() * width, azar() * height, azar() * 1.8 + 0.4);
+    const w = this.mapa.width * this.escala;
+    const h = this.mapa.height * this.escala;
+    g.fillStyle(0x000000, 0.4).fillRoundedRect(this.ox + 6, this.oy + 10, w, h, 22);
+    g.fillStyle(0x5a4a6e).fillRoundedRect(this.ox, this.oy, w, h, 22);
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle(azar() < 0.5 ? 0x4c3e60 : 0x6a5a80, 0.8);
+      g.fillEllipse(this.ox + 20 + azar() * (w - 40), this.oy + 20 + azar() * (h - 40), 10 + azar() * 30, 6 + azar() * 16);
+    }
+    this.marcas = this.add.graphics(); // cráteres
     this.sombras = this.add.graphics();
-    this.objetos.push(g, this.sombras);
+    this.rocas = this.add.graphics(); // los meteoritos en el aire, encima de todo
+    this.objetos.push(g, this.marcas, this.sombras);
+    for (const c of this.crateres) this.crater(c);
 
     for (const j of this.jugadores.values()) {
       j.ficha = ficha(this, 0, 0, this.mapa.ball * this.escala, j).setVisible(false);
@@ -57,8 +73,8 @@ export class Esquiva extends Phaser.Scene {
       j.ficha.setAlpha(j.fuera ? 0.25 : j.conectado ? 1 : 0.4);
       this.objetos.push(j.ficha);
     }
-    this.contador = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
-    this.objetos.push(this.contador);
+    this.contador = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), '#d9d2ff')).setOrigin(0);
+    this.objetos.push(this.rocas, this.contador);
     this.pintarContador();
   }
 
@@ -73,13 +89,28 @@ export class Esquiva extends Phaser.Scene {
       j.ficha.x += (this.px(j.x) - j.ficha.x) * k;
       j.ficha.y += (this.py(j.y) - j.ficha.y) * k;
     }
-    // Sombras: más oscuras y con el anillo más cerrado cuanto más cerca está el impacto.
+    // Sombras: más oscuras y con el anillo más cerrado cuanto más cerca está el impacto. El meteorito baja en
+    // diagonal desde arriba a la derecha hasta su sombra, con una cola de fuego.
     const g = this.sombras;
+    const rocas = this.rocas;
     g.clear();
+    rocas.clear();
     for (const m of this.meteoritos) {
       const r = m.r * this.escala;
-      g.fillStyle(0x000000, 0.15 + 0.45 * m.t).fillCircle(this.px(m.x), this.py(m.y), r);
-      g.lineStyle(4, 0xff5c5c, 0.9).strokeCircle(this.px(m.x), this.py(m.y), r * (1.6 - 0.6 * m.t));
+      const x = this.px(m.x);
+      const y = this.py(m.y);
+      g.fillStyle(0x000000, 0.15 + 0.45 * m.t).fillCircle(x, y, r);
+      g.lineStyle(4, 0xff5c5c, 0.9).strokeCircle(x, y, r * (1.6 - 0.6 * m.t));
+      const falta = 1 - m.t;
+      const mx = x + falta * this.escala * 5;
+      const my = y - falta * this.escala * 9;
+      const tam = r * (0.35 + 0.25 * m.t);
+      for (let k = 6; k >= 1; k--) {
+        rocas.fillStyle(k > 3 ? 0xff5a1f : 0xffb547, 0.12 * (7 - k));
+        rocas.fillCircle(mx + k * tam * 0.45, my - k * tam * 0.8, tam * (1 - k * 0.1));
+      }
+      rocas.fillStyle(0x6b4a3a).fillCircle(mx, my, tam);
+      rocas.fillStyle(0x8a6a52).fillCircle(mx - tam * 0.3, my - tam * 0.3, tam * 0.4);
     }
   }
 
@@ -87,6 +118,11 @@ export class Esquiva extends Phaser.Scene {
   actualizar({ players = [], meteors, impacts = [] }, animar = true) {
     if (!meteors) return;
     this.meteoritos = meteors;
+    for (const m of meteors) {
+      if (this.vistos.has(m.n)) continue;
+      this.vistos.add(m.n);
+      if (animar) sonido.silbidoCaida();
+    }
     for (const p of players) {
       const j = this.jugadores.get(p.id);
       if (!j) continue;
@@ -107,10 +143,20 @@ export class Esquiva extends Phaser.Scene {
     }
   }
 
+  crater(e) {
+    const r = e.r * this.escala * 0.8;
+    this.marcas.fillStyle(0x3a2e4a, 0.9).fillEllipse(this.px(e.x), this.py(e.y), r * 2, r * 1.6);
+    this.marcas.fillStyle(0x2a2036, 0.9).fillEllipse(this.px(e.x), this.py(e.y) + r * 0.1, r * 1.4, r * 1.1);
+  }
+
   explotar(e) {
     const x = this.px(e.x);
     const y = this.py(e.y);
     const r = e.r * this.escala;
+    this.crateres.push(e);
+    this.crater(e);
+    sonido.impacto();
+    this.cameras.main.shake(120, 0.004);
     const onda = this.add.circle(x, y, r, 0xffb547, 0.8);
     this.tweens.add({ targets: onda, scale: 1.4, alpha: 0, duration: 400, onComplete: () => onda.destroy() });
     const chispas = this.add.particles(x, y, 'punto', {

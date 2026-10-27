@@ -1,8 +1,9 @@
-// ¿Cuántos hay? en la pantalla: mientras se mira, un campo lleno de animales; después, la pregunta con 4 números
-// del color y la forma de los botones. Al resolver, vuelven los animales con los buscados resaltados.
+// ¿Cuántos hay? en la pantalla: un prado con valla lleno de animales mientras se mira; después, la pregunta con 4
+// números del color y la forma de los botones. Al resolver, vuelven los animales con los buscados resaltados.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { OPCIONES } from '/shared/opciones.js';
-import { PANEL, TEXTO, TEXTO_SUAVE, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
+import { TEXTO, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
 
 export class Cuantos extends Phaser.Scene {
   init({ jugadores = [], inicio = {} }) {
@@ -30,10 +31,27 @@ export class Cuantos extends Phaser.Scene {
     const { width, height } = this.scale;
     const margen = Math.max(20, width * 0.03);
     this.campo = { x: margen, y: 70, w: width - 2 * margen, h: height * 0.66 - 70 };
+    // Cielo arriba, el prado a franjas con flores y una valla de madera alrededor.
+    const { x, y, w, h } = this.campo;
     const fondo = this.add.graphics();
-    fondo.fillStyle(PANEL, 0.9).fillRoundedRect(this.campo.x, this.campo.y, this.campo.w, this.campo.h, 18);
-    this.turno = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
-    this.pregunta = this.add.text(width / 2, this.campo.y + this.campo.h * 0.28, '', estilo(Math.min(height * 0.08, 70), TEXTO, '700')).setOrigin(0.5);
+    fondo.fillGradientStyle(0x8fd3ff, 0x8fd3ff, 0xd9f2ff, 0xd9f2ff, 1).fillRect(0, 0, width, y + 30);
+    fondo.fillStyle(0x6cc46c).fillRoundedRect(x, y, w, h, 18);
+    for (let k = 0; k < w; k += 70) fondo.fillStyle(0x62b962, 0.8).fillRect(x + k, y, 35, h);
+    let semilla = 3;
+    const azar = () => ((semilla = (semilla * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 30; i++) {
+      const fx = x + 15 + azar() * (w - 30);
+      const fy = y + 15 + azar() * (h - 30);
+      fondo.fillStyle([0xffffff, 0xffd23f, 0xff8fb1][i % 3], 0.8).fillCircle(fx, fy, 3);
+    }
+    fondo.lineStyle(6, 0x8b5a2b);
+    fondo.strokeRoundedRect(x, y, w, h, 18);
+    for (let k = 30; k < w; k += 60) fondo.fillStyle(0x6b4423).fillRect(x + k - 4, y - 10, 8, 18);
+    this.turno = this.add.text(24, 20, '', { ...estilo(Math.max(18, height * 0.03), '#1a3a1a', '700') }).setOrigin(0);
+    this.pregunta = this.add
+      .text(width / 2, this.campo.y + this.campo.h * 0.28, '', { ...estilo(Math.min(height * 0.08, 70), TEXTO, '700'), stroke: '#2b5a2b', strokeThickness: 8 })
+      .setOrigin(0.5)
+      .setDepth(10); // por encima de los animales al resolver
     this.objetos.push(fondo, this.turno, this.pregunta);
 
     // Las 4 respuestas, en fila, debajo de la pregunta.
@@ -113,7 +131,12 @@ export class Cuantos extends Phaser.Scene {
       if (p.answered && !j.respondido && animar && j.ficha) this.tweens.add({ targets: j.ficha, scale: 1.2, duration: 100, yoyo: true });
       Object.assign(j, { respondido: p.answered, ganados: p.gained });
     }
-    if (cambianAnimales) this.dibujarAnimales();
+    if (cambianAnimales) {
+      this.dibujarAnimales();
+      if (animar && estado.looking) sonido.campanilla();
+      else if (animar && estado.phase === 'pregunta') sonido.viento();
+      else if (animar && estado.phase === 'respuesta') sonido.tadan();
+    }
     this.pintar();
   }
 

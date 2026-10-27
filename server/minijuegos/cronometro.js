@@ -50,6 +50,7 @@ export class Cronometro extends Minijuego {
       target: OBJETIVO,
       time: Math.round(this.tiempo * 100) / 100,
       hidden: this.tiempo >= VISIBLE,
+      running: this.inicio !== null, // en las instrucciones y la cuenta atrás, el reloj aún no corre
       done: fin,
       // Los tiempos solo se mandan al final, para que nadie los vea en la pantalla antes de tiempo.
       players: [...this.jugadores].map(([id, j]) => ({

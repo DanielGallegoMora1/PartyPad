@@ -1,25 +1,18 @@
-// Reflejos en la pantalla: un gran círculo que se pone verde con la señal y una tarjeta por jugador con su tiempo.
-// La señal la da el servidor y se muestra en cuanto llega el estado: aquí no se interpola nada, porque cualquier
+// Reflejos en la pantalla: un duelo del Oeste. Del cielo del atardecer cuelga un cartel de madera que pone
+// «ESPERA…» y, con la señal, se pone verde con un «¡YA!» y un disparo. Cada jugador es un cartel de «SE BUSCA»
+// con su tiempo. La señal se muestra en cuanto llega el estado: aquí no se interpola nada, porque cualquier
 // retraso en la pantalla es tiempo de reacción que se les cuenta a los jugadores.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import * as sonido from '../sonido.js';
+import { cara, confeti, estilo, jugadoresDe, texturas } from './comun.js';
 
-const TEXTO = '#f7f4ff';
-const TEXTO_SUAVE = '#b9b2d9';
-const TEXTO_OSCURO = '#1a0f2e';
-const ROJO_TEXTO = '#ff5c5c';
-const ORO_TEXTO = '#ffd23f';
+const MADERA = 0x8b5a2b;
+const MADERA_OSCURA = 0x5c3a1a;
+const PAPEL = 0xf3dfb2;
+const TINTA = '#4a2c12';
 const VERDE = 0x3ddc84;
-const ROJO = 0xff5c5c;
-const MORADO = 0x6a4fd8;
-const GRIS = 0x4a4270;
-const HECHA = 0xb9b2d9;
-const TARJETA = 0x1f1747;
-
-const numero = (hex) => Phaser.Display.Color.HexStringToColor(hex).color;
-const inicial = (nombre) => [...nombre][0]?.toUpperCase() ?? '?';
+const ROJO_TEXTO = '#b3261e';
 const segundos = (ms) => `${(ms / 1000).toFixed(2).replace('.', ',')} s`;
-const texto = (tamano, color, peso = '600') => ({ fontFamily: 'Fredoka', fontSize: `${Math.round(tamano)}px`, fontStyle: peso, color });
 
 export class Reflejos extends Phaser.Scene {
   init({ jugadores = [], inicio = {} }) {
@@ -29,17 +22,12 @@ export class Reflejos extends Phaser.Scene {
     this.senal = 0;
     this.senales = inicio.signals ?? 5;
     this.ganador = null;
-    this.jugadores = new Map(
-      jugadores.map((j) => [
-        j.id,
-        { ...j, color: numero(j.hex), ms: null, early: false, missed: false, total: 0, conectado: j.connected },
-      ]),
-    );
+    this.jugadores = jugadoresDe(jugadores, () => ({ ms: null, early: false, missed: false, total: 0 }));
     this.objetos = [];
   }
 
   create() {
-    this.texturas();
+    texturas(this);
     this.construir();
     this.scale.on('resize', this.construir, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.construir, this));
@@ -47,63 +35,63 @@ export class Reflejos extends Phaser.Scene {
     this.actualizar(this.inicio, false);
   }
 
-  texturas() {
-    if (this.textures.exists('confeti')) return;
-    const g = this.make.graphics({ add: false });
-    g.fillStyle(0xffffff).fillCircle(16, 16, 16).generateTexture('punto', 32, 32);
-    g.clear().fillStyle(0xffffff).fillRect(0, 0, 10, 16).generateTexture('confeti', 10, 16);
-    g.destroy();
-  }
-
-  // Coloca todo según el tamaño de la pantalla. Se repite al redimensionar o si sale alguien.
   construir() {
     for (const o of this.objetos) o.destroy();
     this.objetos = [];
     this.tweens.killAll();
-    this.respira = null;
-
+    this.balanceo = null;
     const { width, height } = this.scale;
-    const margen = Math.max(24, Math.min(width, height) * 0.04);
-    const reloj = 64; // hueco arriba para el reloj de la ronda
-    const abajo = height * (this.jugadores.size > 8 ? 0.5 : 0.62); // donde empiezan las tarjetas (dos filas con más de 8)
+    const horizonte = height * (this.jugadores.size > 8 ? 0.5 : 0.6);
 
-    // El destello verde de la señal ocupa toda la pantalla.
+    // Cielo del atardecer, sol, mesetas, suelo y cactus.
+    const g = this.add.graphics();
+    g.fillGradientStyle(0x3b1f6e, 0x3b1f6e, 0xf28c50, 0xf28c50, 1).fillRect(0, 0, width, horizonte);
+    g.fillStyle(0xffd27a, 0.9).fillCircle(width * 0.78, horizonte - height * 0.05, height * 0.11);
+    g.fillStyle(0x7a3b2e);
+    g.fillPoints([{ x: 0, y: horizonte }, { x: 0, y: horizonte - height * 0.12 }, { x: width * 0.12, y: horizonte - height * 0.12 }, { x: width * 0.16, y: horizonte }], true);
+    g.fillPoints([{ x: width * 0.55, y: horizonte }, { x: width * 0.6, y: horizonte - height * 0.09 }, { x: width * 0.72, y: horizonte - height * 0.09 }, { x: width * 0.76, y: horizonte }], true);
+    g.fillStyle(0xd9a35f).fillRect(0, horizonte, width, height - horizonte);
+    g.fillStyle(0xc48a4a, 0.6);
+    for (let i = 0; i < 18; i++) g.fillEllipse((i * 137) % width, horizonte + ((i * 53) % (height - horizonte)), 40, 6);
+    this.cactus(g, width * 0.08, horizonte + 10, height * 0.16);
+    this.cactus(g, width * 0.93, horizonte + 30, height * 0.12);
     this.destello = this.add.rectangle(0, 0, width, height, VERDE, 0).setOrigin(0);
+    this.objetos.push(g, this.destello);
 
-    // El círculo con su halo y el subtítulo caben entre el reloj y las tarjetas.
-    const subtitulo = Math.max(40, height * 0.06);
-    const r = Math.min(width * 0.16, (abajo - reloj - subtitulo) / 2.7);
-    const cx = width / 2;
-    const cy = reloj + 1.35 * r;
-    this.halo = this.add.circle(cx, cy, r * 1.3, GRIS, 0.18);
-    this.disco = this.add.circle(cx, cy, r, GRIS);
-    const brillo = this.add.circle(cx - r * 0.35, cy - r * 0.38, r * 0.26, 0xffffff, 0.2);
-    this.textoDisco = this.add.text(cx, cy, '', texto(r * 0.4, TEXTO, '700')).setOrigin(0.5);
-    this.subtitulo = this.add
-      .text(cx, cy + r * 1.3 + subtitulo / 2, '', texto(Math.max(18, r * 0.19), TEXTO_SUAVE))
-      .setOrigin(0.5);
+    // Cartel de madera colgando de dos cuerdas.
+    const ancho = Math.min(width * 0.42, 560);
+    const alto = Math.min(horizonte * 0.42, 200);
+    const cy = 70 + alto * 0.62;
+    const cuerdas = this.add.graphics();
+    cuerdas.lineStyle(4, 0x2b1a0c).lineBetween(width / 2 - ancho * 0.35, 64, width / 2 - ancho * 0.35, cy - alto / 2).lineBetween(width / 2 + ancho * 0.35, 64, width / 2 + ancho * 0.35, cy - alto / 2);
+    this.tabla = this.add.rectangle(0, 0, ancho, alto, MADERA).setStrokeStyle(6, MADERA_OSCURA);
+    const vetas = this.add.graphics();
+    vetas.lineStyle(2, MADERA_OSCURA, 0.5);
+    for (let k = 1; k < 4; k++) vetas.lineBetween(-ancho / 2 + 10, -alto / 2 + (k * alto) / 4, ancho / 2 - 10, -alto / 2 + (k * alto) / 4);
+    this.textoCartel = this.add.text(0, 0, '', { ...estilo(alto * 0.36, '#fff3d6', '700'), stroke: '#2b1a0c', strokeThickness: 8 }).setOrigin(0.5);
+    this.cartel = this.add.container(width / 2, cy, [this.tabla, vetas, this.textoCartel]);
+    this.subtitulo = this.add.text(width / 2, cy + alto / 2 + 22, '', { ...estilo(Math.max(18, alto * 0.14), '#fff3d6'), stroke: '#2b1a0c', strokeThickness: 5 }).setOrigin(0.5);
+    this.objetos.push(cuerdas, this.cartel, this.subtitulo);
 
-    // Señales: cuántas van y cuántas quedan, arriba a la izquierda.
-    this.contador = this.add.text(margen, margen * 0.5, '', texto(Math.max(16, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
-    const yPuntos = margen * 0.5 + Math.max(16, height * 0.03) * 1.9;
-    this.puntos = Array.from({ length: this.senales }, (_, i) => this.add.circle(margen + 9 + i * 28, yPuntos, 9, GRIS));
+    // Balas: una por señal, arriba a la izquierda.
+    this.contador = this.add.text(24, 20, '', { ...estilo(Math.max(16, height * 0.03), '#fff3d6'), stroke: '#2b1a0c', strokeThickness: 4 }).setOrigin(0);
+    this.balas = Array.from({ length: this.senales }, (_, i) => this.add.circle(34 + i * 26, 20 + Math.max(16, height * 0.03) * 1.9, 9, 0x6b5a3a).setStrokeStyle(3, 0x2b1a0c));
+    this.objetos.push(this.contador, ...this.balas);
 
-    this.objetos.push(this.destello, this.halo, this.disco, brillo, this.textoDisco, this.subtitulo, this.contador, ...this.puntos);
-
-    // Una tarjeta por jugador, en una fila; con más de 8 jugadores, en dos.
+    // Carteles de «SE BUSCA», en una o dos filas sobre la arena.
     const lista = [...this.jugadores.values()].sort((a, b) => a.id - b.id);
     const filas = lista.length > 8 ? 2 : 1;
     const porFila = Math.max(1, Math.ceil(lista.length / filas));
-    const hueco = Math.min(20, width * 0.015);
-    const alto = (height - abajo - margen - (filas - 1) * hueco) / filas;
-    const w = Math.min(210, (width - 2 * margen - (porFila - 1) * hueco) / porFila);
-    const h = Math.min(alto, w * 1.3);
+    const hueco = Math.min(18, width * 0.012);
+    const disponible = (height - horizonte - 20 - (filas - 1) * hueco) / filas;
+    const w = Math.min(190, (width - 40 - (porFila - 1) * hueco) / porFila);
+    const h = Math.min(disponible, w * 1.3);
     lista.forEach((j, i) => {
       const fila = Math.floor(i / porFila);
       const enFila = Math.min(porFila, lista.length - fila * porFila);
       const x0 = (width - (enFila * w + (enFila - 1) * hueco)) / 2 + w / 2;
-      const y = abajo + fila * (alto + hueco) + alto / 2;
-      j.tarjeta = this.tarjeta(j, x0 + (i % porFila) * (w + hueco), y, w, h);
+      const y = horizonte + 10 + fila * (disponible + hueco) + disponible / 2;
+      j.tarjeta = this.cartelBusca(j, x0 + (i % porFila) * (w + hueco), y, w, h);
       this.objetos.push(j.tarjeta.caja);
     });
 
@@ -111,112 +99,101 @@ export class Reflejos extends Phaser.Scene {
     this.efectoFase(false);
   }
 
-  tarjeta(j, x, y, w, h) {
+  cactus(g, x, y, alto) {
+    const a = alto * 0.18;
+    g.fillStyle(0x3f7d3a);
+    g.fillRoundedRect(x - a / 2, y - alto, a, alto, a / 2);
+    g.fillRoundedRect(x - a * 1.8, y - alto * 0.65, a * 0.8, alto * 0.35, a * 0.4);
+    g.fillRoundedRect(x - a * 1.8, y - alto * 0.4, a * 1.5, a * 0.7, a * 0.35);
+    g.fillRoundedRect(x + a, y - alto * 0.8, a * 0.8, alto * 0.4, a * 0.4);
+    g.fillRoundedRect(x + a * 0.3, y - alto * 0.5, a * 1.4, a * 0.7, a * 0.35);
+  }
+
+  cartelBusca(j, x, y, w, h) {
     const fondo = this.add.graphics();
-    const radio = Math.min(20, w * 0.12);
-    fondo.fillStyle(TARJETA, 0.92).fillRoundedRect(-w / 2, -h / 2, w, h, radio);
-    fondo.lineStyle(3, j.color, 0.55).strokeRoundedRect(-w / 2, -h / 2, w, h, radio);
-    const ra = Math.min(w * 0.18, h * 0.14);
-    const yAvatar = -h / 2 + h * 0.22;
-    const avatar = this.add.circle(0, yAvatar, ra, j.color);
-    const letra = this.add.text(0, yAvatar, j.emoji ?? inicial(j.name), texto(ra * 1.1, TEXTO_OSCURO, '700')).setOrigin(0.5);
-    const nombre = this.add.text(0, -h / 2 + h * 0.46, j.name, texto(w * 0.11, TEXTO)).setOrigin(0.5);
-    if (nombre.width > w * 0.88) nombre.setScale((w * 0.88) / nombre.width);
-    const tiempo = this.add.text(0, -h / 2 + h * 0.67, '', texto(w * 0.15, TEXTO, '700')).setOrigin(0.5);
-    const total = this.add.text(0, -h / 2 + h * 0.87, '', texto(w * 0.085, TEXTO_SUAVE, '500')).setOrigin(0.5);
-    const caja = this.add.container(x, y, [fondo, avatar, letra, nombre, tiempo, total]);
+    fondo.fillStyle(0x000000, 0.25).fillRect(-w / 2 + 5, -h / 2 + 6, w, h);
+    fondo.fillStyle(PAPEL).fillRect(-w / 2, -h / 2, w, h);
+    fondo.lineStyle(3, 0xb08850).strokeRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10);
+    fondo.fillStyle(0x6b4423).fillCircle(0, -h / 2 + 6, 4); // la chincheta
+    const titulo = this.add.text(0, -h / 2 + h * 0.13, 'SE BUSCA', estilo(w * 0.12, TINTA, '700')).setOrigin(0.5);
+    const r = Math.min(w * 0.17, h * 0.13);
+    const avatar = this.add.circle(0, -h / 2 + h * 0.36, r, j.color).setStrokeStyle(3, 0x4a2c12);
+    const emoji = this.add.text(0, -h / 2 + h * 0.36, cara(j), estilo(r * 1.1)).setOrigin(0.5);
+    const nombre = this.add.text(0, -h / 2 + h * 0.57, j.name, estilo(w * 0.1, TINTA, '700')).setOrigin(0.5);
+    if (nombre.width > w * 0.86) nombre.setScale((w * 0.86) / nombre.width);
+    const tiempo = this.add.text(0, -h / 2 + h * 0.74, '', estilo(w * 0.14, TINTA, '700')).setOrigin(0.5);
+    const total = this.add.text(0, -h / 2 + h * 0.9, '', estilo(w * 0.08, '#7a5530', '600')).setOrigin(0.5);
+    const caja = this.add.container(x, y, [fondo, titulo, avatar, emoji, nombre, tiempo, total]);
+    caja.setAngle((j.id % 2 ? -1 : 1) * 2);
     return { caja, tiempo, total, x, y };
   }
 
-  // Pone colores y textos según el estado, sin animar.
   pintar() {
     const ganador = this.fase === 'pausa' ? this.jugadores.get(this.ganador) : null;
     const aspecto = {
-      espera: [ROJO, 'Espera…', 'Todavía no…', TEXTO],
-      ya: [VERDE, '¡YA!', '¡Pulsa!', TEXTO_OSCURO],
-      pausa: ganador
-        ? [ganador.color, `${ganador.ms} ms`, `⚡ ${ganador.name} ha sido el más rápido`, TEXTO_OSCURO]
-        : [GRIS, '—', 'Nadie ha pulsado a tiempo', TEXTO],
-    }[this.fase] ?? [MORADO, 'Atentos', 'Pulsa cuando el círculo se ponga verde', TEXTO];
-    const [color, principal, sub, colorTexto] = aspecto;
-    this.disco.setFillStyle(color);
-    this.halo.setFillStyle(color, 0.18);
-    this.textoDisco.setText(principal).setColor(colorTexto);
+      espera: [MADERA, 'ESPERA…', 'Que nadie desenfunde todavía…'],
+      ya: [0x2e9e5b, '¡YA!', '¡Dispara!'],
+      pausa: ganador ? [0xb8892a, `${ganador.ms} ms`, `🤠 ${ganador.name} es el más rápido del Oeste`] : [MADERA, '—', 'Nadie ha disparado a tiempo'],
+    }[this.fase] ?? [MADERA, 'PREPARADOS', 'Cuando el cartel diga ¡YA!, pulsa'];
+    const [color, principal, sub] = aspecto;
+    this.tabla.setFillStyle(color);
+    this.textoCartel.setText(principal);
     this.subtitulo.setText(sub);
-
-    this.contador.setText(this.senal ? `Señal ${this.senal} de ${this.senales}` : `${this.senales} señales`);
-    this.puntos.forEach((p, i) => {
+    this.contador.setText(this.senal ? `Duelo ${this.senal} de ${this.senales}` : `${this.senales} duelos`);
+    this.balas.forEach((b, i) => {
       const actual = i === this.senal - 1;
-      p.setFillStyle(actual ? color : i < this.senal - 1 ? HECHA : GRIS);
-      p.setScale(actual ? 1.25 : 1);
+      b.setFillStyle(i < this.senal - 1 ? 0x3a2f1e : actual ? 0xe8c15a : 0xc9a24a);
+      b.setScale(actual ? 1.3 : 1);
     });
-
     const jugando = this.fase === 'espera' || this.fase === 'ya';
     for (const [id, j] of this.jugadores) {
       let t = '';
-      let c = TEXTO;
+      let c = TINTA;
       if (j.early) [t, c] = ['¡Pronto!', ROJO_TEXTO];
-      else if (j.missed) [t, c] = ['Tarde', TEXTO_SUAVE];
-      else if (j.ms !== null) [t, c] = [`${j.ms} ms`, ganador && id === this.ganador ? ORO_TEXTO : TEXTO];
-      else if (jugando) [t, c] = ['…', TEXTO_SUAVE];
+      else if (j.missed) [t, c] = ['Tarde', '#8a7350'];
+      else if (j.ms !== null) [t, c] = [`${j.ms} ms`, ganador && id === this.ganador ? '#b8892a' : TINTA];
+      else if (jugando) [t, c] = ['…', '#8a7350'];
       j.tarjeta.tiempo.setText(t).setColor(c);
       j.tarjeta.total.setText(`Total ${segundos(j.total)}`);
-      j.tarjeta.caja.setAlpha(j.conectado ? 1 : 0.4);
+      j.tarjeta.caja.setAlpha(j.conectado ? 1 : 0.45);
     }
   }
 
-  // Lo que se anima al cambiar de fase. Con animar a false (al montar o redimensionar) solo lo que es continuo.
   efectoFase(animar) {
-    this.respira?.remove();
-    this.respira = null;
-    this.disco.setScale(1);
-    this.halo.setScale(1);
+    this.balanceo?.remove();
+    this.balanceo = null;
+    this.cartel.setAngle(0).setScale(1);
     if (this.fase === 'espera') {
-      this.respira = this.tweens.add({
-        targets: [this.disco, this.halo],
-        scale: 1.05,
-        duration: 650,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      // El cartel se balancea con el viento mientras se espera.
+      this.balanceo = this.tweens.add({ targets: this.cartel, angle: { from: -2, to: 2 }, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      if (animar) sonido.viento();
     }
     if (!animar) return;
     if (this.fase === 'ya') {
-      sonido.senal();
+      sonido.disparo();
       this.destello.setAlpha(0.35);
       this.tweens.add({ targets: this.destello, alpha: 0, duration: 450, ease: 'Cubic.easeOut' });
-      this.disco.setScale(0.7);
-      this.tweens.add({ targets: [this.disco, this.halo], scale: 1, duration: 260, ease: 'Back.easeOut' });
-      this.cameras.main.shake(120, 0.004);
+      this.cartel.setScale(0.8);
+      this.tweens.add({ targets: this.cartel, scale: 1, duration: 260, ease: 'Back.easeOut' });
+      this.cameras.main.shake(160, 0.006);
     }
     const ganador = this.jugadores.get(this.ganador);
     if (this.fase === 'pausa' && ganador) {
+      sonido.campanilla();
       const { caja, x, y } = ganador.tarjeta;
-      this.tweens.add({ targets: caja, scale: 1.1, duration: 180, yoyo: true, ease: 'Back.easeOut' });
-      const confeti = this.add.particles(x, y, 'confeti', {
-        emitting: false,
-        lifespan: 1300,
-        speed: { min: 150, max: 380 },
-        angle: { min: 200, max: 340 },
-        gravityY: 600,
-        rotate: { min: 0, max: 360 },
-        scale: { min: 0.5, max: 1 },
-        tint: [ganador.color, 0xffffff, 0xffd23f],
-      });
-      confeti.explode(40);
-      this.objetos.push(confeti);
+      this.tweens.add({ targets: caja, scale: 1.12, duration: 180, yoyo: true, ease: 'Back.easeOut' });
+      confeti(this, x, y, ganador.color, 40);
     }
   }
 
-  // Alguien acaba de pulsar: la tarjeta salta, o tiembla si se ha adelantado.
+  // Alguien acaba de pulsar: el cartel salta, o tiembla si se ha adelantado.
   pulsacion(j) {
     const { caja, x } = j.tarjeta;
-    if (j.early) sonido.pronto();
-    else sonido.pulsacion();
     if (j.early) {
+      sonido.pronto();
       this.tweens.add({ targets: caja, x: x + 10, duration: 50, yoyo: true, repeat: 3, onComplete: () => caja.setX(x) });
     } else {
+      sonido.pulsacion();
       this.tweens.add({ targets: caja, scale: 1.08, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
     }
   }

@@ -55,7 +55,7 @@ PartyPad es una aplicación web multijugador de minijuegos. La partida se muestr
 | RF1 | La pantalla principal crea una sala con un código de 4 letras y un QR de acceso. |
 | RF2 | Los jugadores se unen desde el navegador del móvil, eligen nombre y avatar y aparecen en el lobby (máximo 16). |
 | RF3 | El anfitrión inicia la partida, que consta de varias rondas de minijuegos. |
-| RF4 | Incluye de base nueve minijuegos (Carrera de agitar, Laberinto inclinable, Reflejos, Machaca, Cronómetro, Sumo, Esquiva, Quiz y Colores), que se juegan en orden aleatorio. |
+| RF4 | Incluye de base quince minijuegos (Carrera de agitar, Laberinto inclinable, Reflejos, Machaca, Cronómetro, Sumo, Esquiva, Quiz, Colores, Patata caliente, Tira y afloja, Simón dice, ¿Cuántos hay?, Ritmo y Dibuja), que se juegan en orden aleatorio. |
 | RF5 | Un cuarto minijuego, Apunta y dispara, se distribuye como pack descargable. |
 | RF6 | Hay puntuación por ronda, clasificación acumulada y podio final. |
 | RF7 | Si un jugador se desconecta, puede volver a la partida durante 30 segundos con su token de reconexión. |

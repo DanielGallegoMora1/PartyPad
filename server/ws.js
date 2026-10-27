@@ -87,6 +87,8 @@ function mensajeMando(socket, msg) {
     }
     case 'leave_room':
       return socket.jugador && socket.sala.quitar(socket.jugador.id);
+    case 'draw':
+      return socket.jugador && socket.sala.partida?.datos(socket.jugador.id, msg);
     case 'input_stats':
       return socket.jugador && socket.sala.partida?.medicion?.estadisticasMando(msg.samples, msg.sent);
   }

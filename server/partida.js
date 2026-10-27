@@ -59,6 +59,11 @@ export class Partida {
     this.juego = new M([...this.puntos.keys()], {
       vibrar: (id, ms) => this.sala.vibrarJugador(id, ms),
       avisar: (id, msg) => this.sala.aJugador(id, msg),
+      pantalla: (msg) => this.sala.aPantalla(msg),
+      perfil: (id) => {
+        const j = this.sala.jugadores.get(id);
+        return j ? { id: j.id, name: j.name, avatar: j.avatar, color: j.color } : null;
+      },
     });
     for (const j of this.sala.jugadores.values()) if (!j.socket) this.juego.desconectado(j.id);
     this.cambiarFase('instrucciones', T_INSTRUCCIONES, () => this.cambiarFase('cuenta', T_CUENTA, () => this.jugar()));
@@ -166,6 +171,11 @@ export class Partida {
   }
 
   // bytes: tamaño del mensaje binario, para las mediciones.
+  // Datos en JSON del mando para el minijuego (ver Minijuego.onDatos).
+  datos(id, msg) {
+    if (this.fase === 'jugando') this.juego.onDatos(id, msg);
+  }
+
   entrada(id, entrada, bytes) {
     if (this.fase !== 'jugando') return;
     this.juego.onInput(id, entrada);

@@ -31,6 +31,12 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 | Esquiva meteoritos | Giroscopio: apartarse de donde van a caer los meteoritos | Incluido |
 | Quiz | 4 botones de colores: preguntas de cultura general, al estilo Kahoot | Incluido |
 | Colores | 8 botones de colores: pulsar el color de la tinta, no el de la palabra | Incluido |
+| Patata caliente | Táctil: pasar la bomba antes de que explote; a quien le explota, queda fuera | Incluido |
+| Tira y afloja | Acelerómetro: dos equipos agitan para tirar de la cuerda | Incluido |
+| Simón dice | 4 botones de colores: repetir una secuencia que crece cada nivel | Incluido |
+| ¿Cuántos hay? | 4 botones de colores: recordar cuántos animales de un tipo había; cada vez más y durante menos tiempo | Incluido |
+| Ritmo | Táctil: pulsar cuando las notas llegan a la línea, al ritmo de la melodía | Incluido |
+| Dibuja | Lienzo táctil: todos dibujan lo mismo en el móvil, se ve en directo y se vota el mejor | Incluido |
 | Apunta y dispara | El móvil como puntero | Pack descargable |
 
 En cada partida los minijuegos salen en orden aleatorio y sin repetirse. En el lobby se elige cuántos: 3, 5 o todos.

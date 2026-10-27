@@ -123,6 +123,24 @@
     <p id="opciones-estado" class="opciones-estado" aria-live="polite"></p>
   </section>
 
+  <section class="vista vista-dibujar">
+    <p id="dibujo-tema" class="dibujo-tema"></p>
+    <canvas id="lienzo" class="lienzo" aria-label="Lienzo para dibujar"></canvas>
+    <div id="pinceles" class="pinceles"></div>
+    <div class="herramientas">
+      <div id="grosores" class="grosores"></div>
+      <button id="deshacer" class="boton boton-secundario" type="button">↶ Deshacer</button>
+      <button id="borrar" class="boton boton-secundario" type="button">Borrar</button>
+    </div>
+  </section>
+
+  <section class="vista vista-votar">
+    <h1 class="dibujo-tema">¿Qué dibujo te gusta más?</h1>
+    <p class="suave">Mira los dibujos en la pantalla grande y elige uno</p>
+    <div id="candidatos" class="candidatos"></div>
+    <p id="votar-vacio" class="suave" hidden>Nadie más ha dibujado nada</p>
+  </section>
+
   <section class="vista vista-partida">
     <p id="toque-senal" class="sala-etiqueta toque-senal"></p>
     <button id="boton" class="boton-juego" type="button" aria-label="Botón A">A</button>

@@ -142,6 +142,9 @@ function alRecibir(msg) {
     case 'round_start':
       alEmpezarRonda(msg);
       break;
+    case 'draw':
+      juego.dibujo(msg);
+      break;
     case 'state_update':
       ponerFin(msg.ms);
       juego.actualizar(msg);
@@ -299,7 +302,7 @@ function pintarLobby() {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷', dibujar: '✏️' };
 let fin = 0; // performance.now() en que acaba la fase actual, para los relojes
 let ultimaCuenta = null;
 

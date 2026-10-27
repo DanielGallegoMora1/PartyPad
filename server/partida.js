@@ -7,6 +7,7 @@ import { Medicion, medirLatencia } from './medidas.js';
 const T_INSTRUCCIONES = 5000;
 const T_CUENTA = 3000;
 const T_RESULTADOS = 8000;
+const T_PODIO = 15000; // después, todos vuelven al lobby
 const TICK = 50; // ms entre pasos de la simulación
 const PUNTOS = [15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda; del 12º en adelante, 0
 
@@ -22,9 +23,11 @@ function barajar(lista) {
 
 export class Partida {
   // rondas: cuántos minijuegos se juegan (al azar y sin repetir); sin número, todos.
-  constructor(sala, rondas) {
+  // rondas: cuántos minijuegos se juegan (al azar y sin repetir); sin número, todos.
+  // elegidos: ids de los minijuegos que ha elegido el anfitrión; sin lista, todos los disponibles.
+  constructor(sala, rondas, elegidos) {
     this.sala = sala;
-    const todos = barajar(minijuegosPartida(sala.packs));
+    const todos = barajar(Partida.disponibles(sala, elegidos));
     this.rondas = Number.isInteger(rondas) && rondas > 0 ? todos.slice(0, rondas) : todos;
     this.ronda = -1;
     this.fase = null; // instrucciones | cuenta | jugando | resultados | podio
@@ -54,7 +57,7 @@ export class Partida {
 
   siguienteRonda() {
     this.ronda++;
-    if (this.ronda >= this.rondas.length) return this.cambiarFase('podio');
+    if (this.ronda >= this.rondas.length) return this.cambiarFase('podio', T_PODIO, () => this.sala.volverAlLobby());
     const M = this.rondas[this.ronda];
     this.juego = new M([...this.puntos.keys()], {
       vibrar: (id, ms) => this.sala.vibrarJugador(id, ms),
@@ -110,6 +113,24 @@ export class Partida {
     this.sala.aPantalla(msg);
   }
 
+  // Los minijuegos que se pueden jugar en una sala, quedándose con los elegidos si hay lista.
+  static disponibles(sala, elegidos) {
+    const todos = minijuegosPartida(sala.packs);
+    if (!Array.isArray(elegidos)) return todos;
+    return todos.filter((M) => elegidos.includes(M.id));
+  }
+
+  // El anfitrión salta el minijuego: si aún no se está jugando, se pasa al siguiente sin puntos; si se está
+  // jugando, la ronda acaba con la clasificación que haya; en los resultados, se pasa ya a la siguiente ronda.
+  saltar() {
+    if (this.fase === 'instrucciones' || this.fase === 'cuenta' || this.fase === 'resultados') {
+      clearTimeout(this.timer);
+      this.siguienteRonda();
+    } else if (this.fase === 'jugando') {
+      this.terminarRonda();
+    }
+  }
+
   terminarRonda() {
     clearInterval(this.intervalo);
     clearInterval(this.pings);
@@ -141,7 +162,7 @@ export class Partida {
   }
 
   avisarPantalla() {
-    if (this.fase === 'podio') return this.sala.aPantalla({ type: 'podium', ranking: this.clasificacion() });
+    if (this.fase === 'podio') return this.sala.aPantalla({ type: 'podium', ranking: this.clasificacion(), ms: Math.max(0, this.finFase - Date.now()) });
     // La pantalla recibe también el escenario del minijuego (lo que no cambia en la ronda) y su estado,
     // para dibujarlo desde las instrucciones o si se recarga a mitad.
     const msg = { type: TIPOS[this.fase], ...this.base(), setup: this.juego.escenario(), ...this.juego.estado() };

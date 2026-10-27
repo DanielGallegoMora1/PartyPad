@@ -128,7 +128,6 @@ function alRecibir(msg) {
       pintarLobby();
       sonido.salir();
       juego.quitar(msg.id);
-      $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
       break;
     case 'game_start':
       empezarPartida();
@@ -191,7 +190,7 @@ async function actualizarPacks() {
 
 // Opciones de rondas según los minijuegos que hay: 3, 5 y todos (por defecto, lo último elegido o todos).
 function pintarRondas() {
-  const total = minijuegos.length;
+  const total = elegidos().length;
   const select = $('rondas');
   let elegido = select.value;
   if (!elegido) {
@@ -200,22 +199,56 @@ function pintarRondas() {
     } catch {}
   }
   const opciones = [3, 5].filter((n) => n < total).map((n) => new Option(`${n} al azar`, n));
-  opciones.push(new Option(`Todos (${total})`, ''));
+  opciones.push(new Option(`Todos los elegidos (${total})`, ''));
   select.replaceChildren(...opciones);
   select.value = opciones.some((o) => o.value === elegido) ? elegido : '';
 }
 
+// Minijuegos que el anfitrión ha quitado de la partida (se guardan los quitados, así los nuevos salen elegidos).
+const CLAVE_QUITADOS = 'partypad:quitados';
+let quitados = new Set(leerQuitados());
+
+function leerQuitados() {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_QUITADOS)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarQuitados() {
+  try {
+    localStorage.setItem(CLAVE_QUITADOS, JSON.stringify([...quitados]));
+  } catch {}
+}
+
+const elegidos = () => minijuegos.filter((m) => !quitados.has(m.id));
+
+function alternarMinijuego(id) {
+  if (quitados.has(id)) quitados.delete(id);
+  else quitados.add(id);
+  guardarQuitados();
+  pintarMinijuegos();
+}
+
 function pintarMinijuegos() {
   pintarRondas();
+  pintarLobby();
   $('minijuegos').replaceChildren(
     ...minijuegos.map((m) => {
       const li = document.createElement('li');
-      li.className = 'chip';
-      li.textContent = `${ICONOS[m.control] ?? '🎮'} ${m.name}`;
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'chip';
+      boton.classList.toggle('quitado', quitados.has(m.id));
+      boton.setAttribute('aria-pressed', String(!quitados.has(m.id)));
+      boton.textContent = `${ICONOS[m.control] ?? '🎮'} ${m.name}`;
+      boton.addEventListener('click', () => alternarMinijuego(m.id));
+      li.append(boton);
       if (packsListos.includes(m.id)) {
         const marca = Object.assign(document.createElement('span'), { className: 'marca', textContent: nuevos.has(m.id) ? 'Nuevo' : 'Pack' });
-        li.append(marca);
-        li.classList.toggle('nuevo', nuevos.has(m.id));
+        boton.append(marca);
+        boton.classList.toggle('nuevo', nuevos.has(m.id));
       }
       return li;
     }),
@@ -294,10 +327,15 @@ function pintarLobby() {
 
   const total = jugadores.size;
   $('contador').textContent = `${total} / ${MAX_JUGADORES}`;
-  $('empezar').disabled = total < MIN_JUGADORES;
+  const sinJuegos = minijuegos.length > 0 && elegidos().length === 0;
+  $('empezar').disabled = total < MIN_JUGADORES || sinJuegos;
   const faltan = MIN_JUGADORES - total;
   $('pista-empezar').textContent =
-    faltan > 0 ? `Falta${faltan > 1 ? 'n' : ''} ${faltan} jugador${faltan > 1 ? 'es' : ''} para empezar` : '¡Todo listo!';
+    faltan > 0
+      ? `Falta${faltan > 1 ? 'n' : ''} ${faltan} jugador${faltan > 1 ? 'es' : ''} para empezar`
+      : sinJuegos
+        ? 'Elige al menos un minijuego'
+        : '¡Todo listo!';
 }
 
 // Partida
@@ -427,7 +465,7 @@ function alPodio(msg) {
   });
   $('podio').replaceChildren(...escalones);
   $('podio-resto').replaceChildren(...ranking.slice(3).map((c, i) => fila(c, undefined, i)));
-  $('otra-vez').disabled = jugadores.size < MIN_JUGADORES;
+  ponerFin(msg.ms ?? 0);
   if (escenario.dataset.fase !== 'podio') sonido.fanfarria();
   fase('podio');
 }
@@ -450,10 +488,22 @@ pintarSonido();
 
 $('crear').addEventListener('click', () => enviar({ type: 'create_room' }));
 // Rondas: los minijuegos salen al azar y sin repetir; aquí se elige cuántos.
-const empezarPartida_ = () => enviar({ type: 'start_game', rounds: Number($('rondas').value) || undefined });
+const empezarPartida_ = () =>
+  enviar({ type: 'start_game', rounds: Number($('rondas').value) || undefined, games: elegidos().map((m) => m.id) });
 $('empezar').addEventListener('click', empezarPartida_);
 $('volver').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
-$('otra-vez').addEventListener('click', empezarPartida_);
+$('otra-vez').addEventListener('click', () => enviar({ type: 'back_to_lobby' }));
+$('saltar').addEventListener('click', () => enviar({ type: 'skip_round' }));
+$('todos').addEventListener('click', () => {
+  quitados = new Set();
+  guardarQuitados();
+  pintarMinijuegos();
+});
+$('ninguno').addEventListener('click', () => {
+  quitados = new Set(minijuegos.map((m) => m.id));
+  guardarQuitados();
+  pintarMinijuegos();
+});
 $('rondas').addEventListener('change', () => {
   try {
     localStorage.setItem('partypad:rondas', $('rondas').value);

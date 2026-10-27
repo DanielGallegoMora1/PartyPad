@@ -423,6 +423,49 @@ body[data-vista='partida'] .vista-partida {
   gap: 0.5rem;
 }
 
+.minijuegos .pista-minijuegos {
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.atajos {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.atajo {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--tarjeta-borde);
+  background: transparent;
+  color: var(--texto-suave);
+  font: 600 0.85rem var(--fuente);
+  cursor: pointer;
+}
+
+.atajo:hover {
+  color: var(--texto);
+  border-color: rgb(255 255 255 / 0.4);
+}
+
+.chip {
+  cursor: pointer;
+  color: var(--texto);
+  font-family: var(--fuente);
+  font-size: 1rem;
+  transition: opacity 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.chip:hover {
+  border-color: rgb(255 255 255 / 0.4);
+}
+
+/* Minijuego quitado de la partida */
+.chip.quitado {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -842,4 +885,9 @@ body[data-vista='partida'] .vista-partida {
   .lobby {
     padding: 0 1rem 1rem;
   }
+}
+
+/* En el podio no hay minijuego que saltar */
+.vista-partida:has(.escenario[data-fase='podio']) #saltar {
+  display: none;
 }

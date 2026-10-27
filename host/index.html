@@ -56,7 +56,11 @@
         </div>
         <ul id="lista" class="lista"></ul>
         <div class="minijuegos">
-          <h3>Minijuegos de la partida</h3>
+          <h3>Minijuegos de la partida <span class="pista-minijuegos">· pulsa para quitar o poner</span></h3>
+          <div class="atajos">
+            <button id="todos" class="atajo" type="button">Todos</button>
+            <button id="ninguno" class="atajo" type="button">Ninguno</button>
+          </div>
           <ul id="minijuegos" class="chips"></ul>
         </div>
         <div class="acciones">
@@ -73,6 +77,7 @@
       <h1 class="logo logo-barra">Party<span>Pad</span></h1>
       <span id="ronda" class="ronda"></span>
       <span class="sala-mini">Sala <strong id="codigo-partida"></strong></span>
+      <button id="saltar" class="boton boton-secundario" type="button" title="Termina el minijuego ahora y pasa al siguiente">⏭ Saltar</button>
       <button id="volver" class="boton boton-secundario" type="button">Volver al lobby</button>
     </header>
     <div id="escenario" class="escenario">
@@ -111,7 +116,8 @@
           <h2 class="podio-titulo">¡Fin de la partida!</h2>
           <div id="podio" class="podio"></div>
           <ol id="podio-resto" class="clasificacion podio-resto"></ol>
-          <button id="otra-vez" class="boton boton-grande" type="button">Jugar otra vez</button>
+          <p class="siguiente">Volviendo al lobby en <strong><span data-reloj></span> s</strong></p>
+          <button id="otra-vez" class="boton boton-grande" type="button">Volver al lobby ya</button>
         </div>
       </div>
     </div>

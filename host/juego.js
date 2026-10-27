@@ -76,7 +76,8 @@ function crear() {
     type: Phaser.AUTO,
     parent: 'juego',
     transparent: true,
-    scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+    // Con un tamaño mínimo: un lienzo de 0 × 0 (con la vista oculta) rompe los búferes de WebGL.
+    scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%', min: { width: 320, height: 200 } },
     banner: false,
   });
   // Las escenas se añaden sin arrancar: si fueran en la configuración, Phaser arrancaría la primera
@@ -115,7 +116,7 @@ export async function montar(id, numero, jugadores, inicio) {
   actual = id;
   ronda = numero;
   await (listo ?? crear());
-  if (actual !== id || ronda !== numero) return;
+  if (actual !== id || ronda !== numero || !juego) return;
   try {
     juego.scene.start(id, { jugadores, inicio });
   } catch (err) {
@@ -123,10 +124,17 @@ export async function montar(id, numero, jugadores, inicio) {
   }
 }
 
+// Al salir de la partida (lobby, podio) se destruye Phaser y en la siguiente se crea de nuevo. Si se quedara
+// vivo con la vista oculta, su lienzo pasaría a medir 0 × 0 y WebGL dejaría de dibujar: la siguiente partida
+// sonaba pero se veía vacía.
 export function desmontar() {
-  if (actual && juego) juego.scene.stop(actual);
   actual = null;
   ronda = 0;
+  if (!juego) return;
+  const viejo = juego;
+  juego = null;
+  listo = null;
+  viejo.destroy(true);
 }
 
 // Las escenas solo reciben mensajes cuando ya han hecho create().

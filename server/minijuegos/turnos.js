@@ -26,7 +26,7 @@ export class PorTurnos extends Minijuego {
 
   // Lo que queda de ronda, para el reloj de la pantalla: el resto de la fase actual y los turnos que faltan.
   recalcularLimite() {
-    const { turnos, tPregunta, tRespuesta } = this.constructor;
+    const { turnos, tPregunta, tRespuesta } = this.constructor;
     const resto = { null: 0, pregunta: tRespuesta, respuesta: 0 }[this.fase];
     this.limite = (this.fase ? this.finFase : this.tiempo) + resto + (turnos - this.turno - 1) * (tPregunta + tRespuesta);
   }
@@ -40,6 +40,8 @@ export class PorTurnos extends Minijuego {
 
   tick() {
     if (this.fase === null) return this.siguienteTurno();
+    // Tras el tiempo de mirar (¿Cuántos hay?), se puede responder.
+    if (this.fase === 'pregunta' && !this.abierta && this.tiempo >= this.verHasta) this.abrir();
     if (this.tiempo < this.finFase) return;
     if (this.fase === 'pregunta') {
       this.cerrarTurno();
@@ -53,8 +55,23 @@ export class PorTurnos extends Minijuego {
     this.turno++;
     for (const j of this.jugadores.values()) Object.assign(j, { eleccion: null, segundos: null, ganados: 0 });
     this.preparar(this.turno);
+    const ver = this.tiempoVer(this.turno);
+    this.verHasta = this.tiempo + ver;
+    this.abierta = false;
+    this.cambiar('pregunta', ver + this.constructor.tPregunta);
+    if (ver > 0) this.avisarTodos({ type: 'hint', title: this.tituloTurno(), text: '¡Mira bien la pantalla!', lock: true });
+    else this.abrir();
+  }
+
+  // Segundos al principio de cada turno en que solo se mira y no se puede responder. Sin ellos, 0.
+  tiempoVer() {
+    return 0;
+  }
+
+  abrir() {
+    this.abierta = true;
     this.inicioPregunta = performance.now();
-    this.cambiar('pregunta', this.constructor.tPregunta);
+    this.enviarAhora = true;
     this.avisarTodos({ type: 'hint', title: this.tituloTurno(), text: this.textoTurno(), lock: false });
   }
 
@@ -84,7 +101,7 @@ export class PorTurnos extends Minijuego {
 
   onInput(id, entrada) {
     const j = this.jugadores.get(id);
-    if (entrada.type !== 'button' || !entrada.pressed || !j || this.fase !== 'pregunta' || j.eleccion !== null) return;
+    if (entrada.type !== 'button' || !entrada.pressed || !j || this.fase !== 'pregunta' || !this.abierta || j.eleccion !== null) return;
     if (entrada.button < 0 || entrada.button >= CONJUNTOS[this.constructor.opciones].length) return;
     j.eleccion = entrada.button;
     j.segundos = (performance.now() - this.inicioPregunta) / 1000;

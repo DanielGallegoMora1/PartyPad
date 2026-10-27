@@ -18,19 +18,23 @@ export class Minijuego {
   static envio = 100; // ms entre state_update a la pantalla
   static reloj = true; // false para que la pantalla no enseñe el tiempo que queda (el Cronómetro)
   static opciones = null; // con control 'opciones': qué botones enseña el mando (ver shared/opciones.js)
+  static multiples = false; // con control 'opciones': true si se puede pulsar varias veces por turno (Simón dice)
 
-  // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador.
-  constructor(ids, { vibrar, avisar }) {
+  // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador; pantalla(msg),
+  // a la pantalla al momento; perfil(id) da { id, name, avatar, color } de un jugador.
+  constructor(ids, { vibrar, avisar, pantalla = () => {}, perfil = () => null }) {
     this.ids = ids;
     this.vibrar = vibrar;
     this.avisar = avisar;
+    this.pantalla = pantalla;
+    this.perfil = perfil;
     this.tiempo = 0; // segundos desde que empezó la ronda
     this.limite = this.constructor.duracion / 1000;
     this.enviarAhora = false; // true para que la partida mande el estado a la pantalla sin esperar
   }
 
   static info() {
-    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control, clock: this.reloj, options: this.opciones };
+    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control, clock: this.reloj, options: this.opciones, multi: this.multiples };
   }
 
   get restante() {
@@ -53,6 +57,9 @@ export class Minijuego {
 
   // Entradas ya decodificadas de shared/protocol.js: { type: 'shake', intensity }, { type: 'tilt', x, y }…
   onInput(id, entrada) {}
+
+  // Datos en JSON del mando que no caben en los mensajes binarios (los trazos de Dibuja).
+  onDatos(id, msg) {}
 
   tick(dt) {}
 

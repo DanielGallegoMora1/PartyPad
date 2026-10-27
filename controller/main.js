@@ -4,7 +4,7 @@
 import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
 import { AVATARES } from '/shared/avatares.js';
-import { CONJUNTOS } from '/shared/opciones.js';
+import { CONJUNTOS, GROSORES, PINCELES } from '/shared/opciones.js';
 import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
@@ -56,7 +56,7 @@ const emoji = (indice) => AVATARES[indice]?.emoji ?? '?';
 function mostrar(vista) {
   document.body.dataset.vista = vista;
   // La franja de avisos del minijuego solo tiene sentido mientras se juega.
-  if (!['agitar', 'inclinar', 'apuntar', 'meta'].includes(vista)) pista(null);
+  if (!['agitar', 'inclinar', 'apuntar', 'meta', 'dibujar', 'votar'].includes(vista)) pista(null);
 }
 
 function ponerColor(indice) {
@@ -190,6 +190,14 @@ function alRecibir(msg) {
 
     case 'hint':
       alPista(msg);
+      break;
+
+    case 'draw_start':
+      alEmpezarDibujo(msg);
+      break;
+
+    case 'vote_start':
+      alVotar(msg);
       break;
 
     case 'round_end':
@@ -387,7 +395,7 @@ $('salir').addEventListener('click', () => {
 
 // Partida
 
-const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷' };
+const ICONOS = { agitar: '📳', inclinar: '🎯', tocar: '👆', apuntar: '🏹', opciones: '🔷', dibujar: '✏️' };
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 let fin = 0; // performance.now() en que acaba la fase actual
 let ultimaCuenta = null;
@@ -473,15 +481,176 @@ const enviarBinario = (datos) => yo && socket.readyState === WebSocket.OPEN && s
 let juegoActual = null; // id del minijuego de la ronda
 let toques = 0; // en Machaca, el mando cuenta sus propias pulsaciones
 
-function empezarControl({ control, id, options }) {
+function empezarControl({ control, id, options, multi }) {
   pararMedicion();
   pista(null);
   juegoActual = id;
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
   else if (control === 'apuntar') empezarApuntar();
-  else if (control === 'opciones') empezarOpciones(options);
+  else if (control === 'opciones') empezarOpciones(options, multi);
+  else if (control === 'dibujar') empezarDibujo();
   else empezarToque();
+}
+
+// Dibujar (Dibuja): un lienzo cuadrado con coordenadas de 0 a 1000. Cada trazo se manda al servidor en trozos:
+// 'start' con el primer punto, 'add' con los siguientes cada pocos milisegundos, y 'undo' o 'clear'.
+const lienzo = $('lienzo');
+const pincel = { c: 0, w: 1 };
+let trazos = []; // los míos, para poder repintar al deshacer
+let pendientes = []; // puntos aún sin mandar
+let dibujando = false;
+
+function empezarDibujo() {
+  $('dibujo-tema').textContent = '';
+  trazos = [];
+  mostrar('dibujar');
+  ajustarLienzo();
+}
+
+function alEmpezarDibujo(msg) {
+  $('dibujo-tema').textContent = `Dibuja ${msg.prompt}`;
+  trazos = (msg.strokes ?? []).map((t) => ({ ...t, p: [...t.p] }));
+  if (document.body.dataset.vista !== 'dibujar') mostrar('dibujar');
+  ajustarLienzo();
+}
+
+function ajustarLienzo() {
+  const lado = lienzo.getBoundingClientRect().width || 300;
+  const escala = devicePixelRatio || 1;
+  lienzo.width = lienzo.height = Math.round(lado * escala);
+  repintar();
+}
+
+function repintar() {
+  const ctx = lienzo.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+  for (const t of trazos) pintarTrazo(t, 0);
+}
+
+function pintarTrazo(t, desde) {
+  const ctx = lienzo.getContext('2d');
+  const k = lienzo.width / 1000;
+  ctx.strokeStyle = ctx.fillStyle = PINCELES[t.c];
+  ctx.lineWidth = GROSORES[t.w] * k;
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const inicio = Math.max(0, desde - 2);
+  ctx.moveTo(t.p[inicio] * k, t.p[inicio + 1] * k);
+  for (let i = inicio; i < t.p.length; i += 2) ctx.lineTo(t.p[i] * k, t.p[i + 1] * k);
+  if (t.p.length === 2) ctx.lineTo(t.p[0] * k + 0.1, t.p[1] * k);
+  ctx.stroke();
+}
+
+function coordenadas(e) {
+  const r = lienzo.getBoundingClientRect();
+  const x = Math.round(((e.clientX - r.left) / r.width) * 1000);
+  const y = Math.round(((e.clientY - r.top) / r.height) * 1000);
+  return [Math.max(0, Math.min(1000, x)), Math.max(0, Math.min(1000, y))];
+}
+
+lienzo.addEventListener('pointerdown', (e) => {
+  if (document.body.dataset.vista !== 'dibujar') return;
+  lienzo.setPointerCapture?.(e.pointerId);
+  dibujando = true;
+  const p = coordenadas(e);
+  const t = { c: pincel.c, w: pincel.w, p };
+  trazos.push(t);
+  pintarTrazo(t, 0);
+  enviar({ type: 'draw', op: 'start', c: t.c, w: t.w, p });
+});
+
+lienzo.addEventListener('pointermove', (e) => {
+  if (!dibujando) return;
+  const t = trazos.at(-1);
+  const [x, y] = coordenadas(e);
+  // Puntos muy juntos no aportan nada: se salta los que están a menos de 4 unidades del anterior.
+  if (Math.hypot(x - t.p.at(-2), y - t.p.at(-1)) < 4) return;
+  const desde = t.p.length;
+  t.p.push(x, y);
+  pendientes.push(x, y);
+  pintarTrazo(t, desde);
+});
+
+for (const tipo of ['pointerup', 'pointercancel']) lienzo.addEventListener(tipo, () => {
+  dibujando = false;
+  mandarPendientes();
+});
+
+function mandarPendientes() {
+  while (pendientes.length) enviar({ type: 'draw', op: 'add', p: pendientes.splice(0, 200) });
+}
+setInterval(mandarPendientes, 80);
+addEventListener('resize', () => document.body.dataset.vista === 'dibujar' && ajustarLienzo());
+
+$('deshacer').addEventListener('click', () => {
+  if (!trazos.length) return;
+  mandarPendientes();
+  trazos.pop();
+  repintar();
+  enviar({ type: 'draw', op: 'undo' });
+});
+
+$('borrar').addEventListener('click', () => {
+  mandarPendientes();
+  trazos = [];
+  repintar();
+  enviar({ type: 'draw', op: 'clear' });
+});
+
+function crearPinceles() {
+  $('pinceles').replaceChildren(
+    ...PINCELES.map((hex, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pincel';
+      b.style.setProperty('--color', hex);
+      b.setAttribute('aria-label', `Color ${i + 1}`);
+      b.classList.toggle('activo', i === pincel.c);
+      b.addEventListener('click', () => {
+        pincel.c = i;
+        for (const o of $('pinceles').children) o.classList.toggle('activo', o === b);
+      });
+      return b;
+    }),
+  );
+  $('grosores').replaceChildren(
+    ...GROSORES.map((g, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'grosor';
+      b.style.setProperty('--tam', `${Math.max(6, g / 1.6)}px`);
+      b.setAttribute('aria-label', ['Fino', 'Medio', 'Grueso'][i]);
+      b.classList.toggle('activo', i === pincel.w);
+      b.addEventListener('click', () => {
+        pincel.w = i;
+        for (const o of $('grosores').children) o.classList.toggle('activo', o === b);
+      });
+      return b;
+    }),
+  );
+}
+
+// Votar (Dibuja): una tarjeta por dibujo de los demás; se puede cambiar el voto hasta que acabe el tiempo.
+function alVotar({ candidates }) {
+  const botones = candidates.map((c) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'candidato';
+    b.style.setProperty('--color', COLORES[c.color]?.hex ?? '#888');
+    b.innerHTML = '<span class="avatar"></span><span class="nombre"></span>';
+    b.querySelector('.avatar').textContent = emoji(c.avatar);
+    b.querySelector('.nombre').textContent = c.name;
+    b.addEventListener('click', () => {
+      enviarBinario(encodeButton(yo.id, c.id, true));
+      for (const o of $('candidatos').children) o.classList.toggle('elegido', o === b);
+    });
+    return b;
+  });
+  $('candidatos').replaceChildren(...botones);
+  $('votar-vacio').hidden = candidates.length > 0;
+  mostrar('votar');
 }
 
 // Avisos del minijuego (hint): título, texto, si ha ido bien o mal y si se bloquean los botones.
@@ -514,8 +683,8 @@ function pista(texto, mood = '') {
 }
 
 // Opciones: botones con el color y la forma de las respuestas de la pantalla (4 en el Quiz, 8 en Colores).
-function empezarOpciones(conjunto) {
-  crearOpciones(CONJUNTOS[conjunto] ?? CONJUNTOS.respuestas);
+function empezarOpciones(conjunto, multi) {
+  crearOpciones(CONJUNTOS[conjunto] ?? CONJUNTOS.respuestas, multi);
   $('opciones-titulo').textContent = '';
   $('opciones-estado').textContent = 'Mira la pantalla grande';
   $('opciones-estado').className = 'opciones-estado';
@@ -530,7 +699,8 @@ function bloquearOpciones(si) {
   }
 }
 
-function crearOpciones(opciones) {
+// multi: se puede pulsar varias veces por turno (Simón dice); si no, el primer toque bloquea los botones.
+function crearOpciones(opciones, multi = false) {
   const botones = opciones.map(({ nombre, hex, forma }, i) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -542,6 +712,12 @@ function crearOpciones(opciones) {
       if (b.disabled || !yo) return;
       enviarBinario(encodeButton(yo.id, i, true));
       enviarBinario(encodeButton(yo.id, i, false));
+      if (multi) {
+        b.classList.remove('destello');
+        void b.offsetWidth;
+        b.classList.add('destello');
+        return;
+      }
       bloquearOpciones(true);
       b.classList.add('elegida');
     });
@@ -736,6 +912,7 @@ boton.addEventListener('pointercancel', soltar);
 boton.addEventListener('contextmenu', (e) => e.preventDefault());
 
 crearPaleta();
+crearPinceles();
 conectar();
 
 // PWA: el Service Worker guarda el mando en caché para que cargue al instante (solo con HTTPS o en localhost).

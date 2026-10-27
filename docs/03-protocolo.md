@@ -107,6 +107,7 @@ Cada conexión indica qué es al abrir el WebSocket: `/ws?rol=pantalla` o `/ws?r
 | `join_room` | `code`, `name`, `avatar`, `color` | Se une. El nombre tiene como máximo 16 caracteres; el avatar es un índice de `shared/avatares.js` y el color, de `shared/colores.js`. Ninguno de los dos se puede repetir en la sala; sin color, el servidor da el primero libre |
 | `rejoin` | `code`, `token` | Vuelve con el token guardado en el móvil |
 | `leave_room` | | Sale de la sala |
+| `draw` | `op` (`start`, `add`, `undo` o `clear`), `c` (color), `w` (grosor), `p` (puntos x, y de 0 a 1000) | En Dibuja, los trazos del lienzo; el servidor los reenvía a la pantalla con el `id` del jugador |
 | `input_stats` | `samples`, `sent` | Al dejar de leer el sensor: lecturas tomadas y mensajes enviados, para medir la compresión delta |
 
 **Servidor → mando**
@@ -134,7 +135,7 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
-Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (botones de colores; el número de botón va en BUTTON) o `apuntar`. Con `opciones`, `options` dice qué botones: `respuestas` (4, el Quiz) o `tintas` (8, Colores), de `shared/opciones.js`. Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
+Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (botones de colores; el número de botón va en BUTTON) o `apuntar`. Con `opciones`, `options` dice qué botones: `respuestas` (4: el Quiz, Simón dice y ¿Cuántos hay?) o `tintas` (8, Colores), de `shared/opciones.js`; con `multi: true` (Simón dice) los botones no se bloquean tras la primera pulsación. Con `dibujar`, el mando enseña un lienzo (Dibuja). Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
 
 A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la ronda, como el mapa del laberinto, o `null`) y el estado del minijuego. Así puede dibujarlo desde las instrucciones o al recargar a mitad, sin mandar el mapa en cada `state_update`.
 
@@ -162,6 +163,14 @@ Los puntos por puesto en cada ronda son 15, 12, 10, 8, 7, 6, 5, 4, 3, 2 y 1; del
 | Esquiva | `players` con `id`, `x`, `y` y `out`; `meteors` con `n`, `x`, `y`, `r` y `t` (de 0 a 1 hasta el impacto); e `impacts` con `n`, `x`, `y` y `r` |
 | Quiz | `phase` (`pregunta` o `respuesta`), `turn`, `turns`, `question`, `options`, `correct` (solo en `respuesta`) y `players` con `id`, `answered`, `choice`, `gained` (solo en `respuesta`) y `points` |
 | Colores | Lo mismo que el Quiz, pero con `word` (la palabra) e `ink` (el color de la tinta: el índice del botón correcto) en lugar de la pregunta |
+| Patata caliente | `holder` (quién tiene la bomba), `fuse` (cuánto se ha quemado la mecha, de 0 a 1), `passes`, `boom` (la última explosión: `n` e `id`) y `players` con `id` y `out` |
+| Tira y afloja | `rope` (de -1, gana Fuego, a 1, gana Hielo), `winner`, `teams` y `players` con `id`, `team` e `intensity` |
+| Simón dice | `phase` (`mostrar`, `repetir` o `pausa`), `level`, `length`, `lit` (el color encendido o `null`), `step` y `players` con `id`, `out`, `progress`, `done` y `best` |
+| ¿Cuántos hay? | Lo del Quiz más `looking` (aún se están mirando los animales), `animals` (`emoji`, `x`, `y`, `r`; solo mientras se miran y al resolver), `target` y `count` |
+| Ritmo | `time` (segundo de la canción), `running` y `players` con `id`, `score`, `combo`, `hits`, `last` y `n`. Las notas (`t` y `p`) van en `setup.notes` |
+| Dibuja | `phase` (`dibujar`, `votar` o `resultado`), `prompt` y `players` con `id`, `strokes`, `voted` y `votes` (solo en `resultado`). Los trazos llegan aparte, con `draw`; los de toda la ronda, en `setup.drawings` |
+
+**Dibuja** usa también `draw_start` (`prompt` y, al reconectarse, `strokes`) para que el mando abra el lienzo, y `vote_start` (`candidates`: `id`, `name`, `avatar` y `color`) para la votación. El voto es un BUTTON con el `id` del jugador votado como número de botón.
 
 **Reflejos:** se juegan 5 señales. Antes de cada una hay una espera al azar de 1,5 a 4,5 s; luego hay 1,5 s para pulsar y 2,5 s mostrando los tiempos. Gana quien menos tiempo suma: pulsar antes de la señal suma 2 s y no pulsar, 1,5 s. El servidor mide el tiempo desde que manda la señal a la pantalla (sin esperar al siguiente `state_update`) hasta que le llega el BUTTON. La señal solo aparece en la pantalla grande, así que su retraso es el mismo para todos y la diferencia entre jugadores solo depende de la subida de cada móvil.
 

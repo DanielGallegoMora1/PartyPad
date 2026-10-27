@@ -10,6 +10,12 @@ import { Sumo } from './juegos/sumo.js';
 import { Esquiva } from './juegos/esquiva.js';
 import { Quiz } from './juegos/quiz.js';
 import { Colores } from './juegos/colores.js';
+import { Patata } from './juegos/patata.js';
+import { Tira } from './juegos/tira.js';
+import { Simon } from './juegos/simon.js';
+import { Cuantos } from './juegos/cuantos.js';
+import { Ritmo } from './juegos/ritmo.js';
+import { Dibuja } from './juegos/dibuja.js';
 
 const ESCENAS = {
   carrera: Carrera,
@@ -21,6 +27,12 @@ const ESCENAS = {
   esquiva: Esquiva,
   quiz: Quiz,
   colores: Colores,
+  patata: Patata,
+  tira: Tira,
+  simon: Simon,
+  cuantos: Cuantos,
+  ritmo: Ritmo,
+  dibuja: Dibuja,
 };
 
 let juego = null;
@@ -35,7 +47,7 @@ export const alError = (f) => (alFallar = f);
 // Phaser dibuja cada fotograma antes de pedir el siguiente: un solo error en una escena pararía el juego entero
 // para el resto de la partida. Por eso cada escena se envuelve: si falla, se avisa y el resto sigue. Importa sobre
 // todo con los packs, que traen código descargado.
-const METODOS = ['init', 'preload', 'create', 'update', 'actualizar', 'conexion', 'quitar'];
+const METODOS = ['init', 'preload', 'create', 'update', 'actualizar', 'conexion', 'quitar', 'dibujo'];
 const blindadas = new WeakMap();
 
 function blindar(Escena, clave) {
@@ -126,3 +138,4 @@ function llamar(metodo, ...args) {
 export const actualizar = (estado) => llamar('actualizar', estado);
 export const conexion = (id, conectado) => llamar('conexion', id, conectado);
 export const quitar = (id) => llamar('quitar', id);
+export const dibujo = (msg) => llamar('dibujo', msg); // trazos en directo de Dibuja

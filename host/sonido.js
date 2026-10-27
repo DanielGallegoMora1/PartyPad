@@ -78,3 +78,16 @@ export function fanfarria() {
     nota(f / 2, t, d, 'triangle', 0.2);
   }
 }
+
+// Simón dice: un tono por color, como el juguete.
+const TONOS_SIMON = [415, 310, 252, 209];
+export const tonoSimon = (i) => nota(TONOS_SIMON[i] ?? 300, 0, 0.42, 'triangle', 0.3);
+
+// Ritmo: grados de la escala mayor de do (0 = do4) para la melodía, con un golpe de bombo suave.
+const ESCALA = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
+export function notaRitmo(grado) {
+  const f = 261.63 * 2 ** ((ESCALA[grado] ?? 0) / 12);
+  nota(f, 0, 0.22, 'square', 0.08);
+  nota(f / 2, 0, 0.25, 'triangle', 0.18);
+  nota(90, 0, 0.12, 'sine', 0.25, 45);
+}

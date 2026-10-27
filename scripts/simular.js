@@ -67,7 +67,7 @@ async function pantalla() {
         vista.estado = msg;
         break;
       case 'state_update':
-        if (msg.phase === 'pausa' && vista.estado?.phase !== 'pausa') {
+        if (vista.minijuego === 'reflejos' && msg.phase === 'pausa' && vista.estado?.phase !== 'pausa') {
           const tiempos = msg.players.map((p) => `${jugadores.get(p.id)}: ${p.early ? 'antes' : p.missed ? 'nada' : `${p.ms} ms`}`);
           log(`  Señal ${msg.signal}: ${tiempos.join(', ')}`);
         }
@@ -171,6 +171,13 @@ class Bot {
       case 'reflex_wait':
         this.pulsadoEnSenal = false;
         break;
+      case 'vote_start':
+        // Dibuja: vota a alguien al azar al cabo de un rato.
+        if (msg.candidates.length) {
+          const elegido = msg.candidates[Math.floor(Math.random() * msg.candidates.length)];
+          setTimeout(() => this.binario(encodeButton(this.id, elegido.id, true)), 1000 + Math.random() * 3000);
+        }
+        break;
     }
   }
 
@@ -198,9 +205,82 @@ class Bot {
     if (control === 'agitar') this.agitar();
     else if (control === 'inclinar') this.inclinar(juego);
     else if (juego === 'machaca') this.machacar();
+    else if (juego === 'patata') this.patata();
+    else if (juego === 'simon') this.simon();
+    else if (juego === 'ritmo') this.ritmo();
+    else if (juego === 'dibuja') this.dibujar();
     else if (juego === 'cronometro') this.cronometrar();
     else if (control === 'tocar') this.tocar();
     else if (control === 'opciones') this.elegir(juego);
+  }
+
+  // Patata caliente: si le llega la bomba, la pasa al cabo de un rato (a veces tarda demasiado).
+  patata() {
+    let esperando = false;
+    this.timer = setInterval(() => {
+      if (vista.estado?.holder !== this.id || esperando) return;
+      esperando = true;
+      setTimeout(() => {
+        esperando = false;
+        if (vista.estado?.holder === this.id) this.pulsar();
+      }, 350 + Math.random() * 1500);
+    }, 50);
+  }
+
+  // Simón dice: apunta la secuencia que ve en la pantalla y la repite; a veces se equivoca.
+  simon() {
+    let secuencia = [];
+    let paso = null;
+    let nivel = 0;
+    this.timer = setInterval(() => {
+      const e = vista.estado;
+      if (!e || e.phase === undefined) return;
+      if (e.phase === 'mostrar') {
+        if (e.length !== nivel) {
+          nivel = e.length;
+          secuencia = [];
+        }
+        if (e.step !== null && e.step !== paso) secuencia[e.step] = e.lit;
+        paso = e.step;
+      }
+      if (e.phase === 'repetir' && secuencia.length === nivel && nivel) {
+        const repetir = secuencia;
+        secuencia = [];
+        repetir.forEach((color, i) => {
+          const fallo = Math.random() < 0.04;
+          setTimeout(() => {
+            const boton = fallo ? (color + 1) % 4 : color;
+            this.binario(encodeButton(this.id, boton, true));
+          }, 400 + i * 350);
+        });
+      }
+    }, 20);
+  }
+
+  // Ritmo: pulsa en el momento de cada nota con un error de hasta ±90 ms (y alguna se le escapa).
+  ritmo() {
+    const notas = vista.setup?.notes ?? [];
+    const base = performance.now() - (vista.estado?.time ?? 0) * 1000;
+    for (const nota of notas) {
+      if (Math.random() < 0.1) continue;
+      const cuando = base + (nota.t + 0.06 + (Math.random() - 0.5) * 0.18) * 1000 - performance.now();
+      if (cuando > 0) setTimeout(() => this.pulsar(), cuando);
+    }
+    this.timer = setInterval(() => {}, 1000);
+  }
+
+  // Dibuja: unos cuantos garabatos.
+  dibujar() {
+    let trazos = 0;
+    this.timer = setInterval(() => {
+      if (trazos++ > 12) return;
+      const x = 100 + Math.random() * 800;
+      const y = 100 + Math.random() * 800;
+      json(this.s, { type: 'draw', op: 'start', c: Math.floor(Math.random() * 8), w: Math.floor(Math.random() * 3), p: [Math.round(x), Math.round(y)] });
+      const puntos = [];
+      for (let i = 1; i <= 20; i++) puntos.push(Math.round(Math.min(1000, Math.max(0, x + Math.cos(i / 3) * i * 8))), Math.round(Math.min(1000, Math.max(0, y + Math.sin(i / 3) * i * 8))));
+      json(this.s, { type: 'draw', op: 'add', p: puntos });
+    }, 600);
   }
 
   // Machaca: entre 6 y 10 toques por segundo.
@@ -220,7 +300,7 @@ class Bot {
     let turno = -1;
     this.timer = setInterval(() => {
       const e = vista.estado;
-      if (!e || e.phase !== 'pregunta' || e.turn === turno) return;
+      if (!e || e.phase !== 'pregunta' || e.looking || e.turn === turno) return;
       turno = e.turn;
       const acierta = juego === 'colores' && Math.random() < 0.8;
       const opcion = acierta ? e.ink : Math.floor(Math.random() * (juego === 'colores' ? 8 : 4));

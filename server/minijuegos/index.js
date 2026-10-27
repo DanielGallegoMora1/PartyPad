@@ -8,9 +8,15 @@ import { Sumo } from './sumo.js';
 import { Esquiva } from './esquiva.js';
 import { Quiz } from './quiz.js';
 import { Colores } from './colores.js';
+import { Patata } from './patata.js';
+import { Tira } from './tira.js';
+import { Simon } from './simon.js';
+import { Cuantos } from './cuantos.js';
+import { Ritmo } from './ritmo.js';
+import { Dibuja } from './dibuja.js';
 import { minijuegosDePacks } from '../packs.js';
 
-const BASE = [Carrera, Laberinto, Reflejos, Machaca, Cronometro, Sumo, Esquiva, Quiz, Colores];
+const BASE = [Carrera, Laberinto, Reflejos, Machaca, Cronometro, Sumo, Esquiva, Quiz, Colores, Patata, Tira, Simon, Cuantos, Ritmo, Dibuja];
 
 // Para probar solo algunos, por su id: MINIJUEGOS=laberinto npm run dev
 const elegidos = process.env.MINIJUEGOS?.split(',').map((id) => id.trim());

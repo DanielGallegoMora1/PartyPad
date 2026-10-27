@@ -23,3 +23,7 @@ export const TINTAS = [
 
 // Cada minijuego dice qué conjunto usa (static opciones en el servidor; options en el mensaje de ronda).
 export const CONJUNTOS = { respuestas: OPCIONES, tintas: TINTAS };
+
+// Colores del pincel de Dibuja. El mando y la pantalla usan los índices.
+export const PINCELES = ['#1a1a2e', '#e8213f', '#ff8a00', '#ffd500', '#2fbf4a', '#2f6bff', '#9b51e0', '#ffffff'];
+export const GROSORES = [6, 14, 30]; // en un lienzo de 1000 × 1000

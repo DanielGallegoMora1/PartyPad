@@ -1,7 +1,11 @@
-// Cronómetro en la pantalla: un reloj grande que se oculta a los pocos segundos. Abajo, cada jugador con una marca
-// cuando ha parado. Al final se descubren los tiempos, ordenados de más cerca a más lejos del objetivo.
+// Cronómetro en la pantalla: un cronómetro de los de toda la vida, con su aguja (una vuelta cada 10 s) y la marca
+// del objetivo. A los pocos segundos se tapa con un «?». Abajo, cada jugador con una marca cuando ha parado. Al
+// final se descubren los tiempos.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { MEDALLAS, TEXTO, TEXTO_OSCURO, TEXTO_SUAVE, confeti, estilo, ficha, jugadoresDe, rejilla, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
+
+const VUELTA = 10; // s por vuelta de la aguja
 
 const segundos = (s) => s.toFixed(2).replace('.', ',');
 
@@ -13,6 +17,8 @@ export class Cronometro extends Phaser.Scene {
     this.tiempo = 0; // segundos que lleva la ronda según el servidor
     this.recibido = performance.now(); // cuándo llegó ese tiempo, para que el reloj avance suave entre mensajes
     this.oculto = false;
+    this.corriendo = inicio.running ?? false;
+    this.ultimoSegundo = -1;
     this.hecho = false;
     this.jugadores = jugadoresDe(jugadores, () => ({ parado: false, at: null }));
     this.objetos = [];
@@ -31,15 +37,42 @@ export class Cronometro extends Phaser.Scene {
     for (const o of this.objetos) o.destroy();
     this.objetos = [];
     const { width, height } = this.scale;
-    const cy = height * 0.3;
-    const tam = Math.min(width * 0.14, height * 0.22);
-    this.objetos.push(this.add.text(width / 2, cy - tam * 1.05, `Objetivo: ${segundos(this.objetivo)} s`, estilo(tam * 0.3, TEXTO_SUAVE)).setOrigin(0.5));
-    this.reloj = this.add.text(width / 2, cy, '0,00', estilo(tam, TEXTO, '700')).setOrigin(0.5);
-    this.aviso = this.add.text(width / 2, cy + tam * 0.85, '', estilo(tam * 0.28, '#ffb547')).setOrigin(0.5);
+    // El cronómetro: caja metálica, botón arriba, esfera blanca con marcas y la del objetivo en rojo.
+    const R = Math.min(height * 0.2, width * 0.13);
+    const cx = width * 0.36;
+    const cy = 64 + R * 1.25;
+    this.esfera = { cx, cy, R };
+    const g = this.add.graphics();
+    g.fillStyle(0x9aa3b5).fillRoundedRect(cx - R * 0.16, cy - R * 1.32, R * 0.32, R * 0.22, 6);
+    g.fillStyle(0xc9d1e0).fillRect(cx - R * 0.07, cy - R * 1.12, R * 0.14, R * 0.14);
+    g.fillStyle(0x000000, 0.35).fillCircle(cx + 6, cy + 10, R * 1.04);
+    g.fillStyle(0xb8c0d0).fillCircle(cx, cy, R * 1.04);
+    g.fillStyle(0xfdfcf7).fillCircle(cx, cy, R * 0.94);
+    for (let i = 0; i < 50; i++) {
+      const a = (i / 50) * Math.PI * 2 - Math.PI / 2;
+      const largo = i % 5 ? 0.06 : 0.13;
+      g.lineStyle(i % 5 ? 2 : 4, 0x2b2b3a);
+      g.lineBetween(cx + Math.cos(a) * R * 0.9, cy + Math.sin(a) * R * 0.9, cx + Math.cos(a) * R * (0.9 - largo), cy + Math.sin(a) * R * (0.9 - largo));
+    }
+    for (let n = 0; n < 10; n++) {
+      const a = (n / 10) * Math.PI * 2 - Math.PI / 2;
+      this.objetos.push(this.add.text(cx + Math.cos(a) * R * 0.66, cy + Math.sin(a) * R * 0.66, String(n), estilo(R * 0.14, n === this.objetivo % VUELTA ? '#e8213f' : '#2b2b3a', '700')).setOrigin(0.5));
+    }
+    const ao = (this.objetivo / VUELTA) * Math.PI * 2 - Math.PI / 2;
+    g.fillStyle(0xe8213f).fillCircle(cx + Math.cos(ao) * R * 0.86, cy + Math.sin(ao) * R * 0.86, R * 0.05);
+    this.aguja = this.add.graphics();
+    this.tapa = this.add.container(cx, cy, [this.add.circle(0, 0, R * 0.95, 0x2a1f52), this.add.text(0, 0, '?', estilo(R * 1.1, '#ffb547', '700')).setOrigin(0.5)]).setVisible(false);
+    this.objetos.push(g, this.aguja, this.tapa);
+    // A la derecha, el objetivo y la lectura digital.
+    const tx = width * 0.66;
+    this.objetos.push(this.add.text(tx, cy - R * 0.6, `Para en ${segundos(this.objetivo)} s`, estilo(R * 0.24, TEXTO_SUAVE, '700')).setOrigin(0.5));
+    this.reloj = this.add.text(tx, cy, '0,00', estilo(R * 0.55, TEXTO, '700')).setOrigin(0.5);
+    this.aviso = this.add.text(tx, cy + R * 0.6, '', estilo(R * 0.2, '#ffb547', '700')).setOrigin(0.5);
     this.objetos.push(this.reloj, this.aviso);
 
     const lista = [...this.jugadores.values()].sort((a, b) => a.id - b.id);
-    const { posiciones, lado } = rejilla(lista.length, 20, height * 0.55, width - 40, height * 0.43, 8);
+    const arriba = cy + R * 1.15;
+    const { posiciones, lado } = rejilla(lista.length, 20, arriba, width - 40, height - arriba - 10, 8);
     lista.forEach((j, i) => {
       const { x, y } = posiciones[i];
       const r = lado * 0.22;
@@ -85,20 +118,39 @@ export class Cronometro extends Phaser.Scene {
 
   update() {
     if (!this.reloj) return;
+    const t = this.hecho ? this.objetivo : this.tiempo + (this.corriendo ? (performance.now() - this.recibido) / 1000 : 0);
+    this.pintarAguja(this.oculto && !this.hecho ? null : t);
+    this.tapa.setVisible(this.oculto && !this.hecho);
     if (this.hecho) return;
-    const t = this.tiempo + (performance.now() - this.recibido) / 1000;
     if (this.oculto) {
       this.reloj.setText('?,??');
       this.aviso.setText('¡Ahora a ciegas!');
     } else {
       this.reloj.setText(segundos(Math.max(0, t)));
+      // Tic-tac mientras se ve.
+      const s = Math.floor(t * 2);
+      if (this.corriendo && s !== this.ultimoSegundo) {
+        this.ultimoSegundo = s;
+        sonido.tic(s % 2 === 0);
+      }
     }
   }
 
+  pintarAguja(t) {
+    const g = this.aguja;
+    const { cx, cy, R } = this.esfera;
+    g.clear();
+    if (t === null) return;
+    const a = (t / VUELTA) * Math.PI * 2 - Math.PI / 2;
+    g.lineStyle(R * 0.04, 0xe8213f).lineBetween(cx - Math.cos(a) * R * 0.15, cy - Math.sin(a) * R * 0.15, cx + Math.cos(a) * R * 0.82, cy + Math.sin(a) * R * 0.82);
+    g.fillStyle(0x2b2b3a).fillCircle(cx, cy, R * 0.07);
+  }
+
   // time, hidden, done, players: [{ id, stopped, at }]
-  actualizar({ time, hidden, done, players = [] }, animar = true) {
+  actualizar({ time, hidden, done, running, players = [] }, animar = true) {
     if (time === undefined) return;
     this.tiempo = time;
+    this.corriendo = running;
     this.recibido = performance.now();
     this.oculto = hidden;
     const recienAcabado = done && !this.hecho;
@@ -106,13 +158,20 @@ export class Cronometro extends Phaser.Scene {
     for (const p of players) {
       const j = this.jugadores.get(p.id);
       if (!j) continue;
-      if (p.stopped && !j.parado && animar && j.ficha) this.tweens.add({ targets: j.ficha, scale: 1.15, duration: 120, yoyo: true });
+      if (p.stopped && !j.parado && animar && j.ficha) {
+        this.tweens.add({ targets: j.ficha, scale: 1.15, duration: 120, yoyo: true });
+        sonido.pulsacion();
+      }
       j.parado = p.stopped;
       j.at = p.at;
     }
     if (recienAcabado) {
       this.reloj.setText(segundos(this.objetivo));
       this.aviso.setText('¿Quién se ha acercado más?');
+      if (animar) {
+        sonido.redoble(0.9);
+        this.time.delayedCall(950, () => sonido.tadan());
+      }
     }
     this.pintar(recienAcabado && animar);
   }

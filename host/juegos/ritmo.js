@@ -46,9 +46,26 @@ export class Ritmo extends Phaser.Scene {
     const { width, height } = this.scale;
     this.carril = { x: width * 0.32, w: Math.min(220, width * 0.16), arriba: 70, linea: height * 0.84 };
     const { x, w, arriba, linea } = this.carril;
+    // Escenario: fondo oscuro, focos que laten con cada nota, altavoces a los lados y el carril de neón.
+    const fondo = this.add.graphics();
+    fondo.fillGradientStyle(0x2a0f4a, 0x2a0f4a, 0x07040f, 0x07040f, 1).fillRect(0, 0, width, height);
+    this.focos = this.add.graphics();
+    this.altavoces = [x - w / 2 - 90, x + w / 2 + 90].map((ax) => {
+      const caja = this.add.container(ax, linea - 70, [
+        this.add.rectangle(0, 0, 90, 140, 0x1a1a24).setStrokeStyle(3, 0x3a3a50),
+        this.add.circle(0, -32, 22, 0x2a2a38).setStrokeStyle(4, 0x555570),
+        this.add.circle(0, 30, 32, 0x2a2a38).setStrokeStyle(4, 0x555570),
+      ]);
+      return caja;
+    });
     const g = this.add.graphics();
-    g.fillStyle(0xffffff, 0.05).fillRoundedRect(x - w / 2, arriba, w, height - arriba - 20, 16);
-    g.lineStyle(6, 0xffd23f, 0.9).lineBetween(x - w / 2 - 20, linea, x + w / 2 + 20, linea);
+    g.fillStyle(0x000000, 0.5).fillRoundedRect(x - w / 2, arriba, w, height - arriba - 20, 16);
+    g.lineStyle(4, 0x2ee6ff, 0.9).strokeRoundedRect(x - w / 2, arriba, w, height - arriba - 20, 16);
+    g.lineStyle(10, 0x2ee6ff, 0.15).strokeRoundedRect(x - w / 2, arriba, w, height - arriba - 20, 16);
+    g.lineStyle(8, 0xff4fb4, 1).lineBetween(x - w / 2 - 20, linea, x + w / 2 + 20, linea);
+    g.lineStyle(20, 0xff4fb4, 0.2).lineBetween(x - w / 2 - 20, linea, x + w / 2 + 20, linea);
+    this.objetos.push(fondo, this.focos, ...this.altavoces);
+    this.pulso = 0;
     this.destello = this.add.rectangle(x, linea, w + 40, 26, 0xffd23f, 0);
     this.notasG = this.add.graphics();
     this.objetos.push(g, this.destello, this.notasG);
@@ -81,6 +98,17 @@ export class Ritmo extends Phaser.Scene {
     if (!this.notasG) return;
     const t = this.ahora();
     const { x, w, arriba, linea } = this.carril;
+    // Focos y altavoces laten con la música.
+    this.pulso = Math.max(0, this.pulso - 0.06);
+    const f = this.focos;
+    f.clear();
+    const { width, height } = this.scale;
+    for (const [i, color] of [[0, 0xff4fb4], [1, 0x2ee6ff], [2, 0xffd23f]]) {
+      const ox = width * (0.15 + i * 0.35);
+      const balanceo = Math.sin(t * 1.5 + i) * width * 0.08;
+      f.fillStyle(color, 0.05 + this.pulso * 0.12).fillTriangle(ox, 0, ox + balanceo - 120, height, ox + balanceo + 120, height);
+    }
+    for (const a of this.altavoces) a.setScale(1 + this.pulso * 0.08);
     const g = this.notasG;
     g.clear();
     for (const n of this.notas) {
@@ -92,6 +120,7 @@ export class Ritmo extends Phaser.Scene {
       if (falta <= 0 && !this.sonadas.has(n.n)) {
         this.sonadas.add(n.n);
         sonido.notaRitmo(n.p);
+        this.pulso = 1;
         this.destello.setAlpha(0.6);
         this.tweens.add({ targets: this.destello, alpha: 0, duration: 160 });
       }

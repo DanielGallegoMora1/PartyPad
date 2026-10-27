@@ -91,3 +91,58 @@ export function notaRitmo(grado) {
   nota(f / 2, 0, 0.25, 'triangle', 0.18);
   nota(90, 0, 0.12, 'sine', 0.25, 45);
 }
+
+// Ruido blanco filtrado: la base de explosiones, golpes y silbidos de aire.
+function ruido(inicio, duracion, { volumen = 0.3, filtro = 'lowpass', desde = 2000, hasta = 200 } = {}) {
+  if (!ctx || silencio || ctx.state !== 'running') return;
+  const t = ctx.currentTime + inicio;
+  const muestras = Math.ceil(ctx.sampleRate * duracion);
+  const buffer = ctx.createBuffer(1, muestras, ctx.sampleRate);
+  const datos = buffer.getChannelData(0);
+  for (let i = 0; i < muestras; i++) datos[i] = Math.random() * 2 - 1;
+  const fuente = ctx.createBufferSource();
+  fuente.buffer = buffer;
+  const f = ctx.createBiquadFilter();
+  f.type = filtro;
+  f.frequency.setValueAtTime(desde, t);
+  f.frequency.exponentialRampToValueAtTime(hasta, t + duracion);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(volumen, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duracion);
+  fuente.connect(f).connect(g).connect(salida);
+  fuente.start(t);
+}
+
+// Efectos propios de cada minijuego, para que cada uno suene distinto.
+export const explosion = () => {
+  ruido(0, 0.9, { volumen: 0.55, desde: 1800, hasta: 60 });
+  nota(70, 0, 0.6, 'sine', 0.5, 30);
+};
+export const silbidoCaida = () => nota(1400, 0, 0.9, 'sine', 0.06, 300); // meteorito que cae
+export const impacto = () => {
+  ruido(0, 0.35, { volumen: 0.35, desde: 900, hasta: 80 });
+  nota(90, 0, 0.3, 'sine', 0.35, 40);
+};
+export const tic = (agudo = true) => nota(agudo ? 1800 : 1200, 0, 0.04, 'square', 0.08);
+export const pop = (subida = 0) => nota(300 + Math.min(900, subida * 12), 0, 0.07, 'sine', 0.25, 120); // globo
+export const reventar = () => ruido(0, 0.15, { volumen: 0.4, filtro: 'highpass', desde: 800, hasta: 3000 });
+export const gong = () => {
+  nota(110, 0, 2.2, 'sine', 0.35);
+  nota(165, 0, 1.6, 'sine', 0.15);
+  nota(237, 0, 1.2, 'sine', 0.08);
+};
+export const campanilla = () => [1568, 2093].forEach((f, i) => nota(f, i * 0.12, 0.6, 'sine', 0.18));
+export const bocina = () => [392, 392, 523].forEach((f, i) => nota(f, i * 0.16, i === 2 ? 0.6 : 0.13, 'sawtooth', 0.12));
+export const disparo = () => {
+  ruido(0, 0.25, { volumen: 0.5, filtro: 'highpass', desde: 400, hasta: 4000 });
+  nota(160, 0, 0.18, 'square', 0.2, 50);
+};
+export const viento = () => ruido(0, 1.4, { volumen: 0.08, filtro: 'bandpass', desde: 500, hasta: 900 });
+export const redoble = (segundos = 1.2) => {
+  for (let t = 0; t < segundos; t += 0.05) ruido(t, 0.05, { volumen: 0.05 + 0.1 * (t / segundos), filtro: 'bandpass', desde: 200, hasta: 180 });
+};
+export const tadan = () => [523, 659, 784, 1046].forEach((f, i) => nota(f, i * 0.08, i === 3 ? 0.5 : 0.12, 'triangle', 0.22));
+export const blip = (i = 0) => nota(500 + i * 90, 0, 0.08, 'triangle', 0.18);
+export const tirar = () => nota(80 + Math.random() * 30, 0, 0.12, 'sawtooth', 0.05, 60); // esfuerzo en la cuerda
+export const pincel = () => ruido(0, 0.08, { volumen: 0.03, filtro: 'bandpass', desde: 3000, hasta: 2500 });
+export const motor = (fuerza = 1) => ruido(0, 0.18, { volumen: 0.05 + 0.1 * fuerza, desde: 320, hasta: 120 }); // cohetes

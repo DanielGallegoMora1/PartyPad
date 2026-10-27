@@ -39,7 +39,9 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 | Dibuja | Lienzo táctil: todos dibujan lo mismo en el móvil, se ve en directo y se vota el mejor | Incluido |
 | Apunta y dispara | El móvil como puntero | Pack descargable |
 
-En el lobby, el anfitrión pulsa los minijuegos para quitarlos o ponerlos y elige cuántas rondas jugar (3, 5 o todos los elegidos); salen en orden aleatorio y sin repetirse. Durante la partida puede saltar el minijuego en cualquier momento, y tras el podio todos vuelven al lobby.
+En el lobby, el anfitrión pulsa los minijuegos para quitarlos o ponerlos y elige cuántas rondas jugar (3, 5 o todos los elegidos); salen en orden aleatorio y sin repetirse. Durante la partida puede saltar el minijuego en cualquier momento. En el podio puede jugar otra vez con los mismos minijuegos o volver al lobby; si no elige, a los 20 s todos vuelven al lobby.
+
+Cada minijuego tiene su propio escenario y sus sonidos (sintetizados en el navegador, sin archivos): un duelo del Oeste en Reflejos, un dohyō en el Sumo, una hoguera en la Patata caliente, un prado con barro en Tira y afloja, el juguete clásico en Simón dice, un cronómetro de verdad, un escenario de neón en Ritmo…
 
 ## Arquitectura en un vistazo
 

@@ -1,6 +1,7 @@
 // Machaca en la pantalla: un globo por jugador que se hincha con cada pulsación. El que va primero lleva corona.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
-import { TEXTO, TEXTO_SUAVE, cara, estilo, jugadoresDe, rejilla, texturas, TEXTO_OSCURO } from './comun.js';
+import { TEXTO_SUAVE, cara, estilo, jugadoresDe, rejilla, texturas, TEXTO_OSCURO } from './comun.js';
+import * as sonido from '../sonido.js';
 
 const LLENO = 70; // toques con los que el globo llega a su tamaño máximo
 const SUAVIZADO = 10;
@@ -26,6 +27,17 @@ export class Machaca extends Phaser.Scene {
     for (const o of this.objetos) o.destroy();
     this.objetos = [];
     const { width, height } = this.scale;
+    // Cielo de feria con nubes y el suelo de césped donde están atados los globos.
+    const cielo = this.add.graphics();
+    cielo.fillGradientStyle(0x6ec6ff, 0x6ec6ff, 0xd8f0ff, 0xd8f0ff, 1).fillRect(0, 0, width, height);
+    cielo.fillStyle(0x5cb85c).fillRect(0, height - 40, width, 40);
+    this.objetos.push(cielo);
+    for (let i = 0; i < 5; i++) {
+      const nube = this.add.container((i + 0.5) * (width / 5), 90 + (i % 2) * 60);
+      for (let k = 0; k < 3; k++) nube.add(this.add.ellipse((k - 1) * 40, (k % 2) * -14, 90, 50, 0xffffff, 0.85));
+      this.tweens.add({ targets: nube, x: nube.x + 40, duration: 6000 + i * 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.objetos.push(nube);
+    }
     const lista = [...this.jugadores.values()].sort((a, b) => a.id - b.id);
     const { posiciones, lado } = rejilla(lista.length, 20, 70, width - 40, height - 90, 8);
     this.lado = lado;
@@ -38,8 +50,8 @@ export class Machaca extends Phaser.Scene {
         this.add.ellipse(0, 0, 30, 36, 0xffffff, 0.25),
         this.add.text(0, 0, cara(j), estilo(lado * 0.2, TEXTO_OSCURO, '700')).setOrigin(0.5),
       ]);
-      j.nombre = this.add.text(x, y + lado * 0.42, j.name, estilo(Math.min(lado * 0.11, 22))).setOrigin(0.5);
-      j.cuenta = this.add.text(x, y + lado * 0.42 + Math.min(lado * 0.13, 26), '0', estilo(Math.min(lado * 0.13, 26), TEXTO_SUAVE, '700')).setOrigin(0.5);
+      j.nombre = this.add.text(x, y + lado * 0.42, j.name, { ...estilo(Math.min(lado * 0.11, 22), '#ffffff'), stroke: '#1a3a6a', strokeThickness: 4 }).setOrigin(0.5);
+      j.cuenta = this.add.text(x, y + lado * 0.42 + Math.min(lado * 0.13, 26), '0', { ...estilo(Math.min(lado * 0.13, 26), '#ffffff', '700'), stroke: '#1a3a6a', strokeThickness: 4 }).setOrigin(0.5);
       j.corona = this.add.text(x, y, '👑', estilo(lado * 0.16)).setOrigin(0.5).setVisible(false);
       if (j.nombre.width > lado * 0.95) j.nombre.setScale((lado * 0.95) / j.nombre.width);
       this.objetos.push(j.hilo, j.globo, j.nombre, j.cuenta, j.corona);
@@ -80,6 +92,9 @@ export class Machaca extends Phaser.Scene {
 
   // players: [{ id, taps }]
   actualizar({ players = [] }) {
+    // Un «pop» por mensaje si alguien ha pulsado, más agudo cuanto más llevan.
+    const maximo = Math.max(0, ...players.map((p) => p.taps));
+    if (players.some((p) => p.taps > (this.jugadores.get(p.id)?.toques ?? 0))) sonido.pop(maximo);
     for (const p of players) {
       const j = this.jugadores.get(p.id);
       if (!j) continue;

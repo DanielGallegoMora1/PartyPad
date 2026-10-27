@@ -7,7 +7,7 @@ import { Medicion, medirLatencia } from './medidas.js';
 const T_INSTRUCCIONES = 5000;
 const T_CUENTA = 3000;
 const T_RESULTADOS = 8000;
-const T_PODIO = 15000; // después, todos vuelven al lobby
+const T_PODIO = 20000; // después, si el anfitrión no ha elegido nada, todos vuelven al lobby
 const TICK = 50; // ms entre pasos de la simulación
 const PUNTOS = [15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]; // por puesto en la ronda; del 12º en adelante, 0
 

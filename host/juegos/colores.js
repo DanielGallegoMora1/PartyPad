@@ -3,6 +3,7 @@
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { TINTAS } from '/shared/opciones.js';
 import { TEXTO, TEXTO_SUAVE, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
 
 export class Colores extends Phaser.Scene {
   init({ jugadores = [], inicio = {} }) {
@@ -26,18 +27,34 @@ export class Colores extends Phaser.Scene {
     for (const o of this.objetos) o.destroy();
     this.objetos = [];
     const { width, height } = this.scale;
+    // Taller de pintura: manchas de todos los colores por la pared y un marco para la palabra.
+    const manchas = this.add.graphics();
+    let semilla = 11;
+    const azar = () => ((semilla = (semilla * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 26; i++) {
+      const color = numero(TINTAS[i % TINTAS.length].hex);
+      const x = azar() * width;
+      const y = azar() * height;
+      const r = 20 + azar() * 70;
+      manchas.fillStyle(color, 0.14).fillCircle(x, y, r);
+      for (let k = 0; k < 5; k++) manchas.fillStyle(color, 0.14).fillCircle(x + (azar() - 0.5) * r * 2.4, y + (azar() - 0.5) * r * 2.4, 3 + azar() * 10);
+    }
+    const marco = this.add.graphics();
+    marco.fillStyle(0x0b0820, 0.75).fillRoundedRect(width * 0.12, height * 0.14, width * 0.76, height * 0.36, 20);
+    marco.lineStyle(10, 0xc8a165).strokeRoundedRect(width * 0.12, height * 0.14, width * 0.76, height * 0.36, 20);
+    this.objetos.push(manchas, marco);
     this.turno = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
     const tam = Math.min(width * 0.16, height * 0.22);
     this.palabra = this.add.text(width / 2, height * 0.33, '', estilo(tam, TEXTO, '700')).setOrigin(0.5);
     this.palabra.setStroke('#ffffff', 6);
-    this.ayuda = this.add.text(width / 2, height * 0.33 + tam * 0.75, 'Pulsa el color de la TINTA', estilo(tam * 0.18, TEXTO_SUAVE)).setOrigin(0.5);
+    this.ayuda = this.add.text(width / 2, height * 0.545, 'Pulsa el color de la TINTA', estilo(Math.max(16, tam * 0.16), TEXTO_SUAVE)).setOrigin(0.5);
     this.objetos.push(this.turno, this.palabra, this.ayuda);
 
     // Recordatorio: forma y color de cada botón.
     const lado = Math.min(width * 0.06, height * 0.08);
     TINTAS.forEach((o, i) => {
       const x = width / 2 + (i - (TINTAS.length - 1) / 2) * lado * 1.35;
-      const y = height * 0.58;
+      const y = height * 0.62;
       this.objetos.push(
         this.add.rectangle(x, y, lado, lado, numero(o.hex)).setStrokeStyle(3, 0xffffff, 0.6),
         this.add.text(x, y, o.forma, estilo(lado * 0.5, '#ffffff', '700')).setOrigin(0.5),
@@ -45,7 +62,7 @@ export class Colores extends Phaser.Scene {
     });
 
     const lista = [...this.jugadores.values()].sort((a, b) => a.id - b.id);
-    const y0 = height * 0.66;
+    const y0 = height * 0.69;
     const { posiciones, lado: hueco } = rejilla(lista.length, 20, y0, width - 40, height - y0 - 10, 16);
     lista.forEach((j, i) => {
       const { x, y } = posiciones[i];
@@ -78,15 +95,20 @@ export class Colores extends Phaser.Scene {
   actualizar(estado, animar = true) {
     if (estado.phase === undefined) return;
     const nuevo = estado.turn !== this.estado.turn && estado.phase === 'pregunta';
-    this.estado = estado;
     for (const p of estado.players ?? []) {
       const j = this.jugadores.get(p.id);
       if (!j) continue;
       if (p.answered && !j.respondido && animar && j.ficha) this.tweens.add({ targets: j.ficha, scale: 1.2, duration: 100, yoyo: true });
       Object.assign(j, { respondido: p.answered, ganados: p.gained, puntos: p.points });
     }
+    if (animar && estado.phase === 'respuesta' && this.estado.phase !== 'respuesta') {
+      const aciertos = (estado.players ?? []).filter((p) => p.gained > 0).length;
+      if (aciertos) sonido.campanilla();
+    }
+    this.estado = estado;
     this.pintar();
     if (nuevo && animar) {
+      sonido.blip(estado.turn % 8);
       this.palabra.setScale(0.5);
       this.tweens.add({ targets: this.palabra, scale: 1, duration: 200, ease: 'Back.easeOut' });
     }

@@ -12,11 +12,36 @@ const MAX_PUNTOS = 15_000; // por jugador: el móvil manda los puntos ya simplif
 const COLORES = 8; // índices de PINCELES en shared/opciones.js
 const GROSORES = 3;
 
+// Temas para dibujar: cosas sencillas que se reconocen con pocos trazos.
 export const TEMAS = [
-  'un gato', 'un perro', 'una casa', 'un cohete', 'una pizza', 'un dinosaurio', 'un robot', 'un helado',
-  'una tortuga', 'un fantasma', 'un coche', 'una bicicleta', 'un barco pirata', 'un castillo', 'un unicornio',
-  'una hamburguesa', 'un pulpo', 'un árbol', 'una montaña rusa', 'un extraterrestre', 'un superhéroe',
-  'una tarta de cumpleaños', 'un pingüino', 'un volcán', 'una sirena', 'un caracol', 'un dragón', 'un móvil',
+  // Animales
+  'un gato', 'un perro', 'un pez', 'un pájaro', 'una mariposa', 'una abeja',
+  'una serpiente', 'un elefante', 'una jirafa', 'un tiburón', 'una ballena', 'una rana',
+  'un búho', 'un conejo', 'un caballo', 'una vaca', 'una araña', 'un cangrejo',
+  'una gallina', 'un oso', 'un mono', 'un león', 'un camello', 'un pingüino',
+  'una tortuga', 'un caracol', 'un pulpo', 'un dinosaurio', 'un unicornio', 'un dragón',
+  'una medusa', 'un erizo', 'un flamenco', 'un cerdo', 'un ratón',
+  // Comida
+  'una pizza', 'una hamburguesa', 'un helado', 'una manzana', 'un plátano', 'una sandía',
+  'una zanahoria', 'una piña', 'una tarta de cumpleaños', 'un donut', 'un perrito caliente', 'una piruleta',
+  'unas palomitas', 'un huevo frito', 'una taza de café', 'una cereza', 'una seta', 'un sándwich',
+  'una galleta', 'un caramelo',
+  // Naturaleza
+  'un sol', 'una luna', 'una estrella', 'una nube con lluvia', 'un arcoíris', 'un rayo',
+  'una montaña', 'una isla', 'una flor', 'un cactus', 'un árbol', 'una hoja',
+  'un volcán', 'una ola', 'un copo de nieve', 'una palmera',
+  // Cosas
+  'una casa', 'un coche', 'una bicicleta', 'un avión', 'un tren', 'un barco pirata',
+  'un cohete', 'un globo', 'una cometa', 'un paraguas', 'unas gafas', 'un reloj',
+  'una guitarra', 'un balón', 'una corona', 'una llave', 'un libro', 'una lámpara',
+  'una silla', 'un sombrero', 'un zapato', 'una camiseta', 'unas tijeras', 'un lápiz',
+  'un móvil', 'un dado', 'una tienda de campaña', 'un iglú', 'una pirámide', 'una tostadora',
+  'un cepillo de dientes', 'una bombilla', 'un semáforo', 'un faro', 'un castillo', 'una montaña rusa',
+  'un robot', 'un regalo', 'un ordenador', 'una mochila', 'una escoba', 'un tambor',
+  // Personajes
+  'un fantasma', 'un extraterrestre', 'un superhéroe', 'una sirena', 'un muñeco de nieve', 'una bruja',
+  'un pirata', 'un vampiro', 'un payaso', 'un astronauta', 'un mago', 'un caballero',
+  'una princesa', 'un zombi', 'un vaquero', 'un ninja', 'un rey', 'un esqueleto',
 ];
 
 const esEntero = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;

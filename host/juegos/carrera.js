@@ -221,6 +221,13 @@ export class Carrera extends Phaser.Scene {
 
   update(time, delta) {
     const k = 1 - Math.exp((-SUAVIZADO * delta) / 1000);
+    // Rugido de motores: más seguido y más fuerte cuanto más agitan.
+    const fuerza = [...this.corredores.values()].reduce((a, c) => Math.max(a, c.puesto ? 0 : c.intensidad), 0);
+    this.motor = (this.motor ?? 0) - delta;
+    if (fuerza > 0.15 && this.motor <= 0) {
+      this.motor = 160;
+      sonido.motor(fuerza);
+    }
     for (const c of this.corredores.values()) {
       c.mostrado += (c.progreso - c.mostrado) * k;
       const y = c.yInicio + c.mostrado * (c.yFin - c.yInicio);

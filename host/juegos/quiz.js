@@ -3,6 +3,7 @@
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
 import { OPCIONES } from '/shared/opciones.js';
 import { TEXTO, TEXTO_OSCURO, TEXTO_SUAVE, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
+import * as sonido from '../sonido.js';
 
 export class Quiz extends Phaser.Scene {
   init({ jugadores = [], inicio = {} }) {
@@ -101,15 +102,20 @@ export class Quiz extends Phaser.Scene {
     for (const p of estado.players ?? []) {
       const j = this.jugadores.get(p.id);
       if (!j) continue;
-      if (p.answered && !j.respondido && animar && j.ficha) this.tweens.add({ targets: j.ficha, scale: 1.2, duration: 120, yoyo: true });
+      if (p.answered && !j.respondido && animar && j.ficha) {
+        this.tweens.add({ targets: j.ficha, scale: 1.2, duration: 120, yoyo: true });
+        sonido.blip(3);
+      }
       Object.assign(j, { respondido: p.answered, eleccion: p.choice, ganados: p.gained });
     }
     this.pintar();
     if (cambiaTurno && animar && estado.phase === 'pregunta') {
+      sonido.campanilla();
       this.pregunta.setScale(0.8);
       this.tweens.add({ targets: this.pregunta, scale: 1, duration: 300, ease: 'Back.easeOut' });
     }
     if (cambiaTurno && animar && estado.phase === 'respuesta') {
+      sonido.tadan();
       const o = this.opciones[estado.correct];
       if (o) this.tweens.add({ targets: [o.fondo], scaleX: 1.04, scaleY: 1.08, duration: 160, yoyo: true, repeat: 1 });
     }

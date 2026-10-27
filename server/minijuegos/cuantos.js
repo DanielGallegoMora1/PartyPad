@@ -5,6 +5,9 @@ import { PorTurnos } from './turnos.js';
 
 // Animales que se parecen entre sí, para que cueste distinguirlos de un vistazo.
 const ANIMALES = ['🐶', '🐱', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐤', '🦉', '🐰', '🐹', '🐭'];
+// Animales y especies de cada turno: van subiendo poco a poco.
+const TOTALES = [8, 12, 16, 20, 25, 30];
+const ESPECIES = [3, 4, 4, 5, 5, 6];
 const PUNTOS = 500;
 const PUNTOS_RAPIDEZ = 500;
 
@@ -30,8 +33,8 @@ export class Cuantos extends PorTurnos {
   }
 
   preparar(turno) {
-    const total = 12 + turno * 8; // 12, 20, 28… 52
-    const especies = barajar(ANIMALES).slice(0, 4 + Math.min(3, Math.floor(turno / 2) + 1)); // de 5 a 7 especies
+    const total = TOTALES[turno];
+    const especies = barajar(ANIMALES).slice(0, ESPECIES[turno]);
     const objetivo = especies[0];
     // Del animal que se pregunta hay una parte parecida a los demás, para que no destaque por ser muchos o pocos.
     const media = total / especies.length;

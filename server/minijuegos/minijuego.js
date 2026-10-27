@@ -17,6 +17,7 @@ export class Minijuego {
   static duracion = 30_000; // en ms; la ronda termina antes si terminado() lo dice
   static envio = 100; // ms entre state_update a la pantalla
   static reloj = true; // false para que la pantalla no enseñe el tiempo que queda (el Cronómetro)
+  static opciones = null; // con control 'opciones': qué botones enseña el mando (ver shared/opciones.js)
 
   // ids: jugadores de la ronda. vibrar(id, ms) y avisar(id, msg) llegan al mando de ese jugador.
   constructor(ids, { vibrar, avisar }) {
@@ -29,7 +30,7 @@ export class Minijuego {
   }
 
   static info() {
-    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control, clock: this.reloj };
+    return { id: this.id, name: this.nombre, instructions: this.instrucciones, control: this.control, clock: this.reloj, options: this.opciones };
   }
 
   get restante() {

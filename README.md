@@ -30,7 +30,7 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 | Sumo | Giroscopio: echar a los demás de una plataforma que encoge | Incluido |
 | Esquiva meteoritos | Giroscopio: apartarse de donde van a caer los meteoritos | Incluido |
 | Quiz | 4 botones de colores: preguntas de cultura general, al estilo Kahoot | Incluido |
-| Colores | 4 botones de colores: pulsar el color de la tinta, no el de la palabra | Incluido |
+| Colores | 8 botones de colores: pulsar el color de la tinta, no el de la palabra | Incluido |
 | Apunta y dispara | El móvil como puntero | Pack descargable |
 
 En cada partida los minijuegos salen en orden aleatorio y sin repetirse. En el lobby se elige cuántos: 3, 5 o todos.

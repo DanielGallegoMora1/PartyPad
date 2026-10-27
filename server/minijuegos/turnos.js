@@ -3,9 +3,11 @@
 // Fases de cada turno: 'pregunta' (se puede responder; acaba antes si ya han respondido todos) y 'respuesta'.
 // La subclase pone static turnos, tPregunta y tRespuesta (en s) e implementa preparar(turno) y puntuar(j).
 import { Minijuego, conPuestos } from './minijuego.js';
+import { CONJUNTOS } from '../../shared/opciones.js';
 
 export class PorTurnos extends Minijuego {
   static control = 'opciones';
+  static opciones = 'respuestas';
   static envio = 1000; // los cambios se mandan al momento con enviarAhora; el envío periódico es para el reloj
   static turnos = 5;
   static tPregunta = 10;
@@ -83,7 +85,7 @@ export class PorTurnos extends Minijuego {
   onInput(id, entrada) {
     const j = this.jugadores.get(id);
     if (entrada.type !== 'button' || !entrada.pressed || !j || this.fase !== 'pregunta' || j.eleccion !== null) return;
-    if (entrada.button < 0 || entrada.button > 3) return;
+    if (entrada.button < 0 || entrada.button >= CONJUNTOS[this.constructor.opciones].length) return;
     j.eleccion = entrada.button;
     j.segundos = (performance.now() - this.inicioPregunta) / 1000;
     this.alResponder(id, j);

@@ -1,9 +1,25 @@
-// Los 4 botones de los minijuegos de opciones (Quiz y Colores). El índice es el número de botón del mensaje BUTTON.
-// Cada uno tiene color y forma, para distinguirlos sin depender solo del color. En Colores, la tinta de la palabra
-// es uno de estos colores.
+// Botones de los minijuegos de opciones. El índice es el número de botón del mensaje BUTTON.
+// Cada botón tiene color y forma, para distinguirlos sin depender solo del color.
+
+// Quiz: 4 respuestas, al estilo Kahoot.
 export const OPCIONES = [
   { nombre: 'Rojo', hex: '#e21b3c', forma: '▲' },
   { nombre: 'Azul', hex: '#1368ce', forma: '◆' },
   { nombre: 'Amarillo', hex: '#d89e00', forma: '●' },
   { nombre: 'Verde', hex: '#26890c', forma: '■' },
 ];
+
+// Colores: 8 colores vivos y muy distintos entre sí, que se leen bien sobre el fondo oscuro de la pantalla.
+export const TINTAS = [
+  { nombre: 'Rojo', hex: '#e8213f', forma: '▲' },
+  { nombre: 'Naranja', hex: '#ff8a00', forma: '◆' },
+  { nombre: 'Amarillo', hex: '#ffd500', forma: '●' },
+  { nombre: 'Verde', hex: '#2fbf4a', forma: '■' },
+  { nombre: 'Turquesa', hex: '#00c4cc', forma: '★' },
+  { nombre: 'Azul', hex: '#2f6bff', forma: '♥' },
+  { nombre: 'Morado', hex: '#9b51e0', forma: '✚' },
+  { nombre: 'Rosa', hex: '#ff4fb4', forma: '⬟' },
+];
+
+// Cada minijuego dice qué conjunto usa (static opciones en el servidor; options en el mensaje de ronda).
+export const CONJUNTOS = { respuestas: OPCIONES, tintas: TINTAS };

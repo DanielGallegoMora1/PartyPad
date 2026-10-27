@@ -1,9 +1,10 @@
 // Colores: en la pantalla aparece el nombre de un color escrito con tinta de otro. Hay que pulsar el botón del
 // color de la TINTA, no el de la palabra (el efecto Stroop). Acertar rápido da más puntos y fallar resta.
 import { PorTurnos } from './turnos.js';
+import { TINTAS } from '../../shared/opciones.js';
 
-// En el mismo orden que los botones del mando: rojo, azul, amarillo y verde.
-const COLORES = ['ROJO', 'AZUL', 'AMARILLO', 'VERDE'];
+// En el mismo orden que los botones del mando (shared/opciones.js).
+const COLORES = TINTAS.map((t) => t.nombre.toUpperCase());
 const PUNTOS = 100;
 const PUNTOS_RAPIDEZ = 100;
 const FALLO = -50;
@@ -14,13 +15,15 @@ export class Colores extends PorTurnos {
   static nombre = 'Colores';
   static instrucciones = 'Pulsa el botón del color de la TINTA, no el de la palabra. ¡No te dejes engañar!';
   static turnos = 10;
-  static tPregunta = 2.5;
+  static tPregunta = 3;
+  static opciones = 'tintas';
   static tRespuesta = 1;
 
   preparar() {
-    const tinta = Math.floor(Math.random() * 4);
+    const n = COLORES.length;
+    const tinta = Math.floor(Math.random() * n);
     let palabra = tinta;
-    if (Math.random() >= COINCIDEN) palabra = (tinta + 1 + Math.floor(Math.random() * 3)) % 4;
+    if (Math.random() >= COINCIDEN) palabra = (tinta + 1 + Math.floor(Math.random() * (n - 1))) % n;
     this.actual = { palabra, tinta };
   }
 

@@ -39,7 +39,7 @@ Profesor: José Ramón Sánchez Palomares · Temática elegida: **Videojuego**
 | Dibuja | Lienzo táctil: todos dibujan lo mismo en el móvil, se ve en directo y se vota el mejor | Incluido |
 | Apunta y dispara | El móvil como puntero | Pack descargable |
 
-En cada partida los minijuegos salen en orden aleatorio y sin repetirse. En el lobby se elige cuántos: 3, 5 o todos.
+En el lobby, el anfitrión pulsa los minijuegos para quitarlos o ponerlos y elige cuántas rondas jugar (3, 5 o todos los elegidos); salen en orden aleatorio y sin repetirse. Durante la partida puede saltar el minijuego en cualquier momento, y tras el podio todos vuelven al lobby.
 
 ## Arquitectura en un vistazo
 

@@ -134,7 +134,7 @@ La partida la lleva el servidor (`server/partida.js`). Cada ronda pasa por cuatr
 | Resultados | `round_end` | 8 s |
 | Podio | `podium` | Hasta que el anfitrión juega otra vez o vuelve al lobby |
 
-Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (4 botones de colores, con el número de botón de 0 a 3 en BUTTON) o `apuntar`. Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
+Los cuatro mensajes de ronda llevan `round`, `rounds`, `minigame` (`id`, `name`, `instructions`, `control`) y `ms`, el tiempo que le queda a la fase. `control` dice al mando qué mostrar: `agitar`, `inclinar`, `tocar`, `opciones` (botones de colores; el número de botón va en BUTTON) o `apuntar`. Con `opciones`, `options` dice qué botones: `respuestas` (4, el Quiz) o `tintas` (8, Colores), de `shared/opciones.js`. Con `clock: false` la pantalla no enseña el tiempo que queda (el Cronómetro). En `apuntar` (el pack Apunta y dispara), el mando manda la posición de la mirilla con el mismo mensaje TILT (de -1 a 1 en cada eje, 0 en el centro) y los disparos con BUTTON.
 
 A la pantalla, además, le llegan en todos ellos `setup` (lo que no cambia en la ronda, como el mapa del laberinto, o `null`) y el estado del minijuego. Así puede dibujarlo desde las instrucciones o al recargar a mitad, sin mandar el mapa en cada `state_update`.
 

@@ -4,10 +4,11 @@ import { Minijuego, conPuestos } from './minijuego.js';
 import { chocarTodas, mover, puestosSupervivencia } from './fisica.js';
 
 const RADIO_INICIAL = 6; // de la plataforma, en unidades
-const RADIO_FINAL = 2.6;
+const RADIO_FINAL = 3.2;
 const ENCOGE_DESDE = 8; // s: hasta entonces la plataforma no encoge
 const BOLA = 0.55;
-const FISICA = { aceleracion: 15, roce: 1.1, velocidadMax: 9 };
+// Poca aceleración y bastante roce: con más, cualquier inclinación saca la bola de la plataforma.
+const FISICA = { aceleracion: 7.5, roce: 1.5, velocidadMax: 5.5 };
 const REBOTE = 1.1; // más de 1: los choques empujan más que en el laberinto
 const PASO = 0.01;
 

@@ -4,7 +4,7 @@
 import { decode, encodeButton, encodeShake, encodeTilt } from '/shared/protocol.js';
 import { COLORES } from '/shared/colores.js';
 import { AVATARES } from '/shared/avatares.js';
-import { OPCIONES } from '/shared/opciones.js';
+import { CONJUNTOS } from '/shared/opciones.js';
 import { estadoPermiso, medirAgitado, medirApuntado, medirInclinacion, necesitaPermiso, pedirPermiso } from './sensores.js';
 
 const CLAVE_SESION = 'partypad:sesion'; // { code, token } para reconectarse a la misma sala
@@ -473,14 +473,14 @@ const enviarBinario = (datos) => yo && socket.readyState === WebSocket.OPEN && s
 let juegoActual = null; // id del minijuego de la ronda
 let toques = 0; // en Machaca, el mando cuenta sus propias pulsaciones
 
-function empezarControl({ control, id }) {
+function empezarControl({ control, id, options }) {
   pararMedicion();
   pista(null);
   juegoActual = id;
   if (control === 'agitar') empezarAgitar();
   else if (control === 'inclinar') empezarInclinar();
   else if (control === 'apuntar') empezarApuntar();
-  else if (control === 'opciones') empezarOpciones();
+  else if (control === 'opciones') empezarOpciones(options);
   else empezarToque();
 }
 
@@ -513,8 +513,9 @@ function pista(texto, mood = '') {
   el.className = `pista-juego ${mood}`;
 }
 
-// Opciones: 4 botones con el color y la forma de las respuestas de la pantalla (Quiz y Colores).
-function empezarOpciones() {
+// Opciones: botones con el color y la forma de las respuestas de la pantalla (4 en el Quiz, 8 en Colores).
+function empezarOpciones(conjunto) {
+  crearOpciones(CONJUNTOS[conjunto] ?? CONJUNTOS.respuestas);
   $('opciones-titulo').textContent = '';
   $('opciones-estado').textContent = 'Mira la pantalla grande';
   $('opciones-estado').className = 'opciones-estado';
@@ -529,8 +530,8 @@ function bloquearOpciones(si) {
   }
 }
 
-function crearOpciones() {
-  const botones = OPCIONES.map(({ nombre, hex, forma }, i) => {
+function crearOpciones(opciones) {
+  const botones = opciones.map(({ nombre, hex, forma }, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'opcion';
@@ -548,6 +549,7 @@ function crearOpciones() {
     return b;
   });
   $('opciones').replaceChildren(...botones);
+  $('opciones').classList.toggle('ocho', opciones.length > 4);
 }
 
 // Tocar: un botón grande. En Reflejos, el servidor avisa de cada señal y responde con el tiempo de cada pulsación.
@@ -734,7 +736,6 @@ boton.addEventListener('pointercancel', soltar);
 boton.addEventListener('contextmenu', (e) => e.preventDefault());
 
 crearPaleta();
-crearOpciones();
 conectar();
 
 // PWA: el Service Worker guarda el mando en caché para que cargue al instante (solo con HTTPS o en localhost).

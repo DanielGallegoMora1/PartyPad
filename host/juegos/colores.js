@@ -1,7 +1,7 @@
-// Colores en la pantalla: una palabra enorme (el nombre de un color) escrita con tinta de otro. Abajo, los 4 colores
+// Colores en la pantalla: una palabra enorme (el nombre de un color) escrita con tinta de otro. Abajo, los 8 colores
 // con la forma de su botón, como recordatorio, y los jugadores con su resultado en cada turno.
 import * as Phaser from '/lib/phaser/phaser.esm.min.js';
-import { OPCIONES } from '/shared/opciones.js';
+import { TINTAS } from '/shared/opciones.js';
 import { TEXTO, TEXTO_SUAVE, estilo, ficha, jugadoresDe, numero, rejilla, texturas } from './comun.js';
 
 export class Colores extends Phaser.Scene {
@@ -29,14 +29,14 @@ export class Colores extends Phaser.Scene {
     this.turno = this.add.text(24, 20, '', estilo(Math.max(18, height * 0.03), TEXTO_SUAVE)).setOrigin(0);
     const tam = Math.min(width * 0.16, height * 0.22);
     this.palabra = this.add.text(width / 2, height * 0.33, '', estilo(tam, TEXTO, '700')).setOrigin(0.5);
-    this.palabra.setStroke('#ffffff', 10);
+    this.palabra.setStroke('#ffffff', 6);
     this.ayuda = this.add.text(width / 2, height * 0.33 + tam * 0.75, 'Pulsa el color de la TINTA', estilo(tam * 0.18, TEXTO_SUAVE)).setOrigin(0.5);
     this.objetos.push(this.turno, this.palabra, this.ayuda);
 
     // Recordatorio: forma y color de cada botón.
-    const lado = Math.min(width * 0.08, height * 0.09);
-    OPCIONES.forEach((o, i) => {
-      const x = width / 2 + (i - 1.5) * lado * 1.4;
+    const lado = Math.min(width * 0.06, height * 0.08);
+    TINTAS.forEach((o, i) => {
+      const x = width / 2 + (i - (TINTAS.length - 1) / 2) * lado * 1.35;
       const y = height * 0.58;
       this.objetos.push(
         this.add.rectangle(x, y, lado, lado, numero(o.hex)).setStrokeStyle(3, 0xffffff, 0.6),
@@ -62,7 +62,7 @@ export class Colores extends Phaser.Scene {
     const e = this.estado;
     if (!this.palabra) return;
     this.turno.setText(e.turn ? `${e.turn} de ${e.turns}` : '');
-    const tinta = OPCIONES[e.ink];
+    const tinta = TINTAS[e.ink];
     this.palabra.setText(e.word ?? '¿Preparados?').setColor(tinta?.hex ?? TEXTO);
     this.palabra.setAlpha(e.phase === 'respuesta' ? 0.35 : 1);
     const resuelto = e.phase === 'respuesta';

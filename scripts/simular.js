@@ -223,7 +223,7 @@ class Bot {
       if (!e || e.phase !== 'pregunta' || e.turn === turno) return;
       turno = e.turn;
       const acierta = juego === 'colores' && Math.random() < 0.8;
-      const opcion = acierta ? e.ink : Math.floor(Math.random() * 4);
+      const opcion = acierta ? e.ink : Math.floor(Math.random() * (juego === 'colores' ? 8 : 4));
       const espera = juego === 'colores' ? 400 + Math.random() * 1200 : 1000 + Math.random() * 4000;
       setTimeout(() => {
         this.binario(encodeButton(this.id, opcion, true));
